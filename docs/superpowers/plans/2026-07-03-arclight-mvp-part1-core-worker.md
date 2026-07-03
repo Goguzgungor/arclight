@@ -1970,14 +1970,15 @@ const PK = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' 
 const FIXTURE = fileURLToPath(new URL('./fixtures/emitter', import.meta.url));
 
 // Kontratın gerçek event'i: Ping(uint256 indexed n, address who)
-// Kasıtlı yanlış ABI: fazladan non-indexed parametre → data uzunluğu tutmaz → DecodeError
+// Kasıtlı yanlış ABI: aynı tipler (→ aynı topic0) ama hiçbir parametre indexed değil →
+// decodeEventLog data'da 64 bayt bekler, log'da 32 bayt var → DecodeError
+// (Dikkat: parametre tipi eklemek/çıkarmak topic0'ı değiştirir ve log hiç eşleşmez.)
 const WRONG_ABI = [
   {
     type: 'event', name: 'Ping',
     inputs: [
-      { name: 'n', type: 'uint256', indexed: true },
+      { name: 'n', type: 'uint256', indexed: false },
       { name: 'who', type: 'address', indexed: false },
-      { name: 'extra', type: 'uint256', indexed: false },
     ],
   },
 ];
