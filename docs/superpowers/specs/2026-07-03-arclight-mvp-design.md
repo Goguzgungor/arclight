@@ -5,7 +5,7 @@
 
 ## 1. Amaç ve Kapsam
 
-Arclight, Arc (Circle'ın stablecoin-odaklı, EVM-uyumlu L1'i) için Kubernetes-native, self-hosted bir contract-event indexer'ıdır. Kullanıcı bir `Indexer` custom resource'u tanımlar (ABI + contract adresleri + RPC listesi + DSN); operatör çalışan bir indexer kurar: şema, tablolar, dinleyici worker. Veri kullanıcının kendi Postgres'inde, her event kendi tablosunda, doğrudan SQL ile okunur.
+Arclight, Arc (Circle'ın stablecoin-odaklı, EVM-uyumlu L1'i) için Kubernetes-native, self-hosted bir contract-event indexer'ıdır. Kullanıcı bir `Indexer` custom resource'u tanımlar (ABI + contract adresleri + RPC listesi + DSN); operatör dinleyici worker'ı kurar, worker açılışta şema ve tabloları bootstrap eder. Veri kullanıcının kendi Postgres'inde, her event kendi tablosunda, doğrudan SQL ile okunur.
 
 ### MVP kapsamı (onaylanan kararlar)
 
@@ -89,14 +89,14 @@ spec:
     chainId: 5042002
     rpc:
       - https://arc-testnet.drpc.org
-      - https://<yedek-rpc>
+      - https://...            # yedek uç: Alchemy/QuickNode/GetBlock hesabından alınır
   storage:
     mode: External               # MVP'de tek mod
     external:
       dsnSecretRef: { name: pg-dsn, key: url }
   contracts:
     - name: usdc
-      address: "0x..."
+      address: "0x..."        # Arc testnet USDC adresi — M5'te explorer'dan teyit edilir
       abi: { configMapRef: { name: usdc-abi, key: abi.json } }
       startBlock: 0
       events: [ Transfer, Approval ]   # boş = ABI'deki tüm event'ler
@@ -111,7 +111,7 @@ spec:
 - **Adımlar:** spec'i zod ile doğrula → ABI ConfigMap + DSN Secret varlığını kontrol et → worker config'ini render edip ConfigMap olarak yaz → worker Deployment'ı kur/güncelle (config hash annotation ile değişimde rollout) → `.status` güncelle.
 - **Finalizer:** CR silinince worker Deployment + config ConfigMap silinir; **DB şema/tablolara dokunulmaz** (veri güvenliği).
 - **Status iki yazarlı (SSA field manager ayrımı):** operatör provizyon durumu ve koşulları yazar; worker kendi CR'ının `currentBlock / headBlock / lag / phase` alanlarını patch'ler. Faz akışı: `Provisioning → Backfilling → Live → Degraded`.
-- **RBAC:** operatör — Indexer CR'ları (tüm ns veya scoped), Deployments, ConfigMaps, Secret read; worker — yalnızca kendi CR'ının status subresource'u.
+- **RBAC:** operatör — ClusterRole ile tüm namespace'lerdeki Indexer CR'larını izler; Deployments/ConfigMaps yönetimi ve Secret okuma CR'ın namespace'inde yapılır. Worker — yalnızca kendi CR'ının status subresource'unu patch'leyebilir.
 - Printer kolonları: `kubectl get indexers` → `PHASE / CURRENT / HEAD / LAG`.
 
 ## 6. Worker: Ingestion Hattı
