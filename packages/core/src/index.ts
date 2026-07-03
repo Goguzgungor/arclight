@@ -10,3 +10,4 @@ export {
   type EventColumn,
   type TableSpec,
 } from './ddl.js';
+export { DecodeError, decodeLogToRow, toSqlValue, type DecodedRow, type RawLog } from './decode.js';
