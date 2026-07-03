@@ -2202,7 +2202,7 @@ COPY packages/core/package.json packages/core/
 COPY packages/worker/package.json packages/worker/
 RUN pnpm install --frozen-lockfile
 COPY packages ./packages
-RUN pnpm -r build && pnpm --filter @arclight/worker deploy --prod /out
+RUN pnpm -r build && pnpm --filter @arclight/worker deploy --legacy --prod /out
 
 FROM node:22-slim
 WORKDIR /app
@@ -2240,7 +2240,7 @@ services:
       anvil: { condition: service_started }
     environment:
       DATABASE_URL: postgres://arclight:arclight@postgres:5432/arclight
-      CONFIG_PATH: /etc/arclight/config.json
+      CONFIG_PATH: /etc/arclight/worker-config.json
     volumes:
       - ./manifests/demo:/etc/arclight:ro
     ports: ["9090:9090"]

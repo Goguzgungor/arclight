@@ -1,0 +1,16 @@
+{
+  "indexerName": "demo",
+  "network": {
+    "chainId": 31337,
+    "rpc": ["http://anvil:8545"],
+    "finalityTag": "latest"
+  },
+  "contracts": [
+    {
+      "name": "emitter",
+      "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "abiPath": "/etc/arclight/emitter-abi.json"
+    }
+  ],
+  "polling": { "batchBlocks": 100, "intervalMs": 1000 }
+}
