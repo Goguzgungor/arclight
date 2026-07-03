@@ -1,0 +1,32 @@
+import { z } from 'zod';
+
+export const ContractConfigSchema = z.object({
+  name: z.string().min(1),
+  address: z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'geçersiz EVM adresi'),
+  abiPath: z.string().min(1),
+  startBlock: z.number().int().nonnegative().default(0),
+  events: z.array(z.string().min(1)).default([]),
+});
+
+export const WorkerConfigSchema = z.object({
+  indexerName: z.string().min(1),
+  network: z.object({
+    chainId: z.number().int().positive(),
+    rpc: z.array(z.string().url()).min(1),
+    finalityTag: z.enum(['finalized', 'safe', 'latest']).default('finalized'),
+  }),
+  contracts: z.array(ContractConfigSchema).min(1),
+  polling: z
+    .object({
+      batchBlocks: z.number().int().positive().default(1000),
+      intervalMs: z.number().int().positive().default(2000),
+    })
+    .default({}),
+});
+
+export type ContractConfig = z.infer<typeof ContractConfigSchema>;
+export type WorkerConfig = z.infer<typeof WorkerConfigSchema>;
+
+export function parseWorkerConfig(raw: unknown): WorkerConfig {
+  return WorkerConfigSchema.parse(raw);
+}

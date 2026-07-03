@@ -11,3 +11,11 @@ export {
   type TableSpec,
 } from './ddl.js';
 export { DecodeError, decodeLogToRow, toSqlValue, type DecodedRow, type RawLog } from './decode.js';
+export { planRange, type BlockRange } from './ranges.js';
+export {
+  ContractConfigSchema,
+  WorkerConfigSchema,
+  parseWorkerConfig,
+  type ContractConfig,
+  type WorkerConfig,
+} from './config.js';
