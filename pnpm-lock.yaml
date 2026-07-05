@@ -24,6 +24,8 @@ importers:
         specifier: ^3.2.4
         version: 3.2.6(@types/node@22.20.0)(tsx@4.21.0)(yaml@2.9.0)
 
+  e2e: {}
+
   packages/core:
     dependencies:
       viem:

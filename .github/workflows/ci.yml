@@ -14,3 +14,17 @@ jobs:
       - run: pnpm -r build
       - run: pnpm -r test
       - run: helm lint charts/arclight && helm template arclight charts/arclight > /dev/null
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: arclight-e2e
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm e2e
