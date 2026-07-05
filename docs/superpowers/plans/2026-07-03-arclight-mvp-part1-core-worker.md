@@ -1970,14 +1970,15 @@ const PK = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' 
 const FIXTURE = fileURLToPath(new URL('./fixtures/emitter', import.meta.url));
 
 // Kontratın gerçek event'i: Ping(uint256 indexed n, address who)
-// Kasıtlı yanlış ABI: fazladan non-indexed parametre → data uzunluğu tutmaz → DecodeError
+// Kasıtlı yanlış ABI: aynı tipler (→ aynı topic0) ama hiçbir parametre indexed değil →
+// decodeEventLog data'da 64 bayt bekler, log'da 32 bayt var → DecodeError
+// (Dikkat: parametre tipi eklemek/çıkarmak topic0'ı değiştirir ve log hiç eşleşmez.)
 const WRONG_ABI = [
   {
     type: 'event', name: 'Ping',
     inputs: [
-      { name: 'n', type: 'uint256', indexed: true },
+      { name: 'n', type: 'uint256', indexed: false },
       { name: 'who', type: 'address', indexed: false },
-      { name: 'extra', type: 'uint256', indexed: false },
     ],
   },
 ];
@@ -2201,7 +2202,7 @@ COPY packages/core/package.json packages/core/
 COPY packages/worker/package.json packages/worker/
 RUN pnpm install --frozen-lockfile
 COPY packages ./packages
-RUN pnpm -r build && pnpm --filter @arclight/worker deploy --prod /out
+RUN pnpm -r build && pnpm --filter @arclight/worker deploy --legacy --prod /out
 
 FROM node:22-slim
 WORKDIR /app
@@ -2239,7 +2240,7 @@ services:
       anvil: { condition: service_started }
     environment:
       DATABASE_URL: postgres://arclight:arclight@postgres:5432/arclight
-      CONFIG_PATH: /etc/arclight/config.json
+      CONFIG_PATH: /etc/arclight/worker-config.json
     volumes:
       - ./manifests/demo:/etc/arclight:ro
     ports: ["9090:9090"]

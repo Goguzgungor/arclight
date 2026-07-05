@@ -1,0 +1,5 @@
+node_modules/
+dist/
+*.tsbuildinfo
+packages/worker/test/fixtures/emitter/out/
+packages/worker/test/fixtures/emitter/cache/
