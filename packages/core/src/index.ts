@@ -19,3 +19,14 @@ export {
   type ContractConfig,
   type WorkerConfig,
 } from './config.js';
+export {
+  ABI_MOUNT_DIR,
+  CONFIG_MOUNT_PATH,
+  IndexerSpecSchema,
+  configHash,
+  renderWorkerConfig,
+  type IndexerCondition,
+  type IndexerPhase,
+  type IndexerSpec,
+  type IndexerStatus,
+} from './crd.js';
