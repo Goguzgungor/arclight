@@ -1,0 +1,40 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: arclight-operator
+  labels:
+    {{- include "arclight.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [arclight.dev]
+    resources: [indexers]
+    verbs: [get, list, watch]
+  - apiGroups: [arclight.dev]
+    resources: [indexers/status]
+    verbs: [patch]
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [get, list, watch, create, patch]
+  - apiGroups: [""]
+    resources: [configmaps, serviceaccounts]
+    verbs: [get, list, watch, create, patch]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get]
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [roles, rolebindings]
+    verbs: [get, list, watch, create, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: arclight-operator
+  labels:
+    {{- include "arclight.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: arclight-operator
+subjects:
+  - kind: ServiceAccount
+    name: arclight-operator
+    namespace: {{ .Release.Namespace }}

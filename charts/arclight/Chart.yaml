@@ -1,0 +1,6 @@
+apiVersion: v2
+name: arclight
+description: Kubernetes-native contract-event indexer for Arc — operator chart
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
