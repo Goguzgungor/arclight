@@ -18,7 +18,9 @@ services:
     ports: ["8545:8545"]
 
   worker:
-    build: .
+    build:
+      context: .
+      target: worker
     depends_on:
       postgres: { condition: service_healthy }
       anvil: { condition: service_started }
