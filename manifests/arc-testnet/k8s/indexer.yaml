@@ -1,0 +1,19 @@
+apiVersion: arclight.dev/v1alpha1
+kind: Indexer
+metadata:
+  name: usdc-arc
+spec:
+  network:
+    chainId: 5042002
+    rpc: ["https://arc-testnet.drpc.org"]
+  storage:
+    mode: External
+    external:
+      dsnSecretRef: { name: pg-dsn, key: url }
+  contracts:
+    - name: usdc
+      address: "<USDC_ADDRESS>"
+      abi:
+        configMapRef: { name: usdc-abi, key: abi.json }
+      startBlock: 0
+      events: [Transfer, Approval]
