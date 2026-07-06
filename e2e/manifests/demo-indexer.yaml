@@ -5,7 +5,7 @@ metadata:
 spec:
   network:
     chainId: 31337
-    rpc: ["http://anvil:8545"]
+    rpc: ["ws://anvil:8545", "http://anvil:8545"]
     finalityTag: latest
   storage:
     mode: External

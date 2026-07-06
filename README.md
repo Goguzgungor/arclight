@@ -11,7 +11,7 @@ kubectl apply (ConfigMap[ABI] + Indexer CR + Secret[DSN])
         ▼
 [ Operator ] ──kurar──▶ worker Deployment + config ConfigMap
                               │
-Arc RPC'ler ──finalized'a kadar poll──▶ [ Worker ] ──tek tx──▶ [ Postgres ]
+Arc RPC'ler ──WS newHeads + poll fallback──▶ [ Worker ] ──tek tx──▶ [ Postgres ]
                                             └──status patch──▶ Indexer .status
 ```
 
@@ -36,6 +36,10 @@ kubectl get indexers
 # usdc-arc   Live    8123456   8123456   0
 ```
 
+`rpc` listesine bir `wss://` ucu eklersen worker yeni bloğu `eth_subscribe(newHeads)`
+ile anında görür; yoksa `polling.intervalMs` aralığıyla poll eder (WS varken de
+güvenlik ağı olarak çalışır).
+
 Veri: `idx_<indexer>` şemasında `<contract>_<event>` tabloları
 (`idx_usdc_arc.usdc_transfer` gibi) + `_cursor`, `_meta`, `_dead_letter`
 kontrol tabloları. CR silinince worker kaynakları temizlenir, **DB'ye
@@ -46,7 +50,8 @@ dokunulmaz**.
 Worker `:9090/metrics` (Prometheus) ve `:9090/healthz` sunar:
 `arclight_blocks_behind`, `arclight_events_ingested_total`,
 `arclight_rpc_errors_total`, `arclight_last_processed_block`,
-`arclight_dead_letter_total`, `arclight_write_latency_seconds`.
+`arclight_dead_letter_total`, `arclight_write_latency_seconds`,
+`arclight_ws_connected`, `arclight_head_notifications_total`.
 
 ## Geliştirme
 
