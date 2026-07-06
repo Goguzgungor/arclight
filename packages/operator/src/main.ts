@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { pino } from 'pino';
-import { K8s, WatchPhase } from 'kubernetes-fluent-client';
+import { K8s } from 'kubernetes-fluent-client';
+import { WatchPhase } from 'kubernetes-fluent-client/dist/fluent/shared-types.js';
 import { Indexer } from './kinds.js';
 import { createKubeApi } from './kube.js';
 import { reconcile, type ReconcileDeps } from './reconcile.js';
