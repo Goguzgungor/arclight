@@ -1,5 +1,14 @@
 import { z } from 'zod';
 
+// rpc uçları: http(s) polling/okuma, ws(s) newHeads aboneliği + okuma
+export const RpcUrlSchema = z
+  .string()
+  .url()
+  .refine(
+    (u) => /^(https?|wss?):\/\//i.test(u),
+    'rpc URL şeması http(s):// veya ws(s):// olmalı',
+  );
+
 export const ContractConfigSchema = z.object({
   name: z.string().min(1),
   address: z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'geçersiz EVM adresi'),
@@ -12,7 +21,7 @@ export const WorkerConfigSchema = z.object({
   indexerName: z.string().min(1),
   network: z.object({
     chainId: z.number().int().positive(),
-    rpc: z.array(z.string().url()).min(1),
+    rpc: z.array(RpcUrlSchema).min(1),
     finalityTag: z.enum(['finalized', 'safe', 'latest']).default('finalized'),
   }),
   contracts: z.array(ContractConfigSchema).min(1),

@@ -38,6 +38,19 @@ describe('IndexerSpecSchema', () => {
   it('boş contracts listesini reddeder', () => {
     expect(() => IndexerSpecSchema.parse({ ...raw, contracts: [] })).toThrow();
   });
+
+  it('rpc: ws:// ve wss:// URL kabul edilir', () => {
+    const ok = {
+      ...raw,
+      network: { ...raw.network, rpc: ['wss://arc-testnet.drpc.org', 'ws://anvil:8545', 'https://x.example'] },
+    };
+    expect(IndexerSpecSchema.safeParse(ok).success).toBe(true);
+  });
+
+  it('rpc: http/ws dışı şema reddedilir', () => {
+    const bad = { ...raw, network: { ...raw.network, rpc: ['ftp://kotu.example'] } };
+    expect(IndexerSpecSchema.safeParse(bad).success).toBe(false);
+  });
 });
 
 describe('renderWorkerConfig', () => {
