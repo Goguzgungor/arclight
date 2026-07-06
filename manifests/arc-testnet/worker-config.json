@@ -1,0 +1,18 @@
+{
+  "indexerName": "arc-usdc",
+  "network": {
+    "chainId": 5042002,
+    "rpc": ["https://arc-testnet.drpc.org"],
+    "finalityTag": "finalized"
+  },
+  "contracts": [
+    {
+      "name": "usdc",
+      "address": "<USDC_ADDRESS>",
+      "abiPath": "/etc/arclight/usdc-abi.json",
+      "startBlock": 0,
+      "events": ["Transfer", "Approval"]
+    }
+  ],
+  "polling": { "batchBlocks": 1000, "intervalMs": 2000 }
+}

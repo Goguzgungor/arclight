@@ -9,6 +9,7 @@ import { bootstrapIndexer, runLoop, type PipelineDeps } from './pipeline.js';
 import { createRpc, filterHealthyRpcs } from './rpc.js';
 import { startHealthServer } from './health.js';
 import { PhaseTracker } from './status.js';
+import { crStatusTargetFromEnv, startCrStatusLoop, type CrStatusTarget } from './crstatus.js';
 
 const log = pino({ level: process.env['LOG_LEVEL'] ?? 'info' });
 
@@ -49,6 +50,14 @@ async function main(): Promise<void> {
     log,
   };
   await bootstrapIndexer(deps);
+  let crTarget: CrStatusTarget | null = null;
+  try {
+    crTarget = crStatusTargetFromEnv();
+  } catch (err) {
+    log.warn({ err }, 'CR status hedefi kurulamadı — status patch kapalı');
+  }
+  const stopCrStatus = crTarget ? startCrStatusLoop(crTarget, phase, log) : (): void => {};
+  if (crTarget) log.info({ cr: `${crTarget.namespace}/${crTarget.name}` }, 'CR status patch açık');
   log.info({ indexer: cfg.indexerName, schema: deps.schema, rpcs }, 'arclight worker başladı');
 
   const ctrl = new AbortController();
@@ -60,6 +69,7 @@ async function main(): Promise<void> {
   process.on('SIGINT', shutdown);
 
   await runLoop(deps, ctrl.signal);
+  stopCrStatus();
   server.close();
   await pool.end();
 }

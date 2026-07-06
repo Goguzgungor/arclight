@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arclight-operator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "arclight.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: arclight-operator
+  template:
+    metadata:
+      labels:
+        {{- include "arclight.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: arclight-operator
+      containers:
+        - name: operator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: WORKER_IMAGE
+              value: "{{ .Values.workerImage.repository }}:{{ .Values.workerImage.tag }}"
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: RESYNC_INTERVAL_MS
+              value: {{ .Values.resyncIntervalMs | quote }}
+          ports:
+            - containerPort: 8080
+              name: health
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

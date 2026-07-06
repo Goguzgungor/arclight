@@ -37,6 +37,7 @@ export async function runOnce(deps: PipelineDeps): Promise<boolean> {
   const cursor = await getCursor(pool, schema);
   if (cursor === null) throw new Error('cursor yok — önce bootstrapIndexer çağrılmalı');
   metrics.blocksBehind.set(Number(finalized - cursor));
+  phase.setBlocks(cursor, finalized);
 
   const range = planRange(cursor, finalized, cfg.polling.batchBlocks);
   if (!range) {
@@ -79,6 +80,7 @@ export async function runOnce(deps: PipelineDeps): Promise<boolean> {
   metrics.deadLetters.inc(dead.length);
   metrics.lastProcessedBlock.set(Number(range.toBlock));
   metrics.blocksBehind.set(Number(finalized - range.toBlock));
+  phase.setBlocks(range.toBlock, finalized);
   if (range.toBlock === finalized) phase.set('Live');
   deps.log.info(
     { fromBlock: range.fromBlock, toBlock: range.toBlock, inserted, dead: dead.length },

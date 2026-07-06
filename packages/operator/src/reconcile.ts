@@ -1,0 +1,82 @@
+import type { Logger } from 'pino';
+import { IndexerSpecSchema, type IndexerCondition } from '@arclight/core';
+import type { Indexer } from './kinds.js';
+import type { KubeApi } from './kube.js';
+import { desiredResources } from './resources.js';
+
+export interface ReconcileDeps {
+  kube: KubeApi;
+  workerImage: string;
+  log: Logger;
+}
+
+function condition(
+  status: 'True' | 'False',
+  reason: string,
+  message?: string,
+): IndexerCondition {
+  return {
+    type: 'Provisioned',
+    status,
+    reason,
+    ...(message ? { message } : {}),
+    lastTransitionTime: new Date().toISOString(),
+  };
+}
+
+export async function reconcile(deps: ReconcileDeps, cr: Indexer): Promise<void> {
+  const name = cr.metadata?.name;
+  const namespace = cr.metadata?.namespace;
+  const uid = cr.metadata?.uid;
+  if (!name || !namespace || !uid) return;
+
+  const setCondition = (c: IndexerCondition) =>
+    deps.kube.patchIndexerStatus(namespace, name, {
+      observedGeneration: cr.metadata?.generation,
+      conditions: [c],
+    });
+
+  const parsed = IndexerSpecSchema.safeParse(cr.spec);
+  if (!parsed.success) {
+    const detail = parsed.error.issues
+      .map((i) => `${i.path.join('.')}: ${i.message}`)
+      .join('; ');
+    await setCondition(condition('False', 'InvalidSpec', detail));
+    return;
+  }
+  const spec = parsed.data;
+
+  for (const c of spec.contracts) {
+    const ref = c.abi.configMapRef;
+    const cm = await deps.kube.getConfigMap(namespace, ref.name);
+    if (!cm?.data?.[ref.key]) {
+      await setCondition(
+        condition('False', 'MissingAbiConfigMap', `ConfigMap ${ref.name}/${ref.key} bulunamadı`),
+      );
+      return;
+    }
+  }
+
+  const dsnRef = spec.storage.external.dsnSecretRef;
+  const secret = await deps.kube.getSecret(namespace, dsnRef.name);
+  if (!secret?.data?.[dsnRef.key]) {
+    await setCondition(
+      condition('False', 'MissingDsnSecret', `Secret ${dsnRef.name}/${dsnRef.key} bulunamadı`),
+    );
+    return;
+  }
+
+  const desired = desiredResources({
+    namespace,
+    owner: { name, uid },
+    spec,
+    workerImage: deps.workerImage,
+  });
+  await deps.kube.applyServiceAccount(desired.serviceAccount);
+  await deps.kube.applyRole(desired.role);
+  await deps.kube.applyRoleBinding(desired.roleBinding);
+  await deps.kube.applyConfigMap(desired.configMap);
+  await deps.kube.applyDeployment(desired.deployment);
+  await setCondition(condition('True', 'Reconciled'));
+  deps.log.info({ indexer: name, namespace, hash: desired.hash }, 'reconcile tamam');
+}

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: emitter-abi
+data:
+  abi.json: |
+    [
+      {
+        "type": "event",
+        "name": "Ping",
+        "inputs": [
+          { "name": "n", "type": "uint256", "indexed": true },
+          { "name": "who", "type": "address", "indexed": false }
+        ]
+      }
+    ]

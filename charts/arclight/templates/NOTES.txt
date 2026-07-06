@@ -1,0 +1,8 @@
+Arclight operatörü kuruldu.
+
+Bir indexer başlatmak için 3 YAML yeter:
+  1. DSN Secret'ı        (kubectl create secret generic pg-dsn --from-literal=url=postgres://...)
+  2. ABI ConfigMap'i     (kubectl create configmap usdc-abi --from-file=abi.json)
+  3. Indexer CR'ı        (kubectl apply -f indexer.yaml)
+
+İzle: kubectl get indexers

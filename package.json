@@ -8,7 +8,9 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "eslint .",
-    "demo:seed": "pnpm --filter @arclight/worker demo:seed"
+    "demo:seed": "pnpm --filter @arclight/worker demo:seed",
+    "e2e": "pnpm --filter @arclight/e2e test:e2e",
+    "arc:preflight": "pnpm --filter @arclight/worker arc:preflight"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

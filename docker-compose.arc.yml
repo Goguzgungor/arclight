@@ -12,21 +12,15 @@ services:
       timeout: 2s
       retries: 15
 
-  anvil:
-    image: ghcr.io/foundry-rs/foundry:latest
-    entrypoint: ["anvil", "--host", "0.0.0.0", "--block-time", "1"]
-    ports: ["8545:8545"]
-
   worker:
     build:
       context: .
       target: worker
     depends_on:
       postgres: { condition: service_healthy }
-      anvil: { condition: service_started }
     environment:
       DATABASE_URL: postgres://arclight:arclight@postgres:5432/arclight
       CONFIG_PATH: /etc/arclight/worker-config.json
     volumes:
-      - ./manifests/demo:/etc/arclight:ro
+      - ./manifests/arc-testnet:/etc/arclight:ro
     ports: ["9090:9090"]
