@@ -8,6 +8,7 @@ import {
 import { bootstrap, commitBatch, getCursor, initCursor, type DeadLetterEntry } from './db.js';
 import { fetchLogs, getBlockTimes, getFinalizedBlockNumber } from './rpc.js';
 import type { Metrics } from './metrics.js';
+import type { HeadSignal } from './signal.js';
 import type { PhaseTracker } from './status.js';
 
 export interface PipelineDeps {
@@ -18,6 +19,7 @@ export interface PipelineDeps {
   schema: string;
   metrics: Metrics;
   phase: PhaseTracker;
+  headSignal: HeadSignal;
   log: Logger;
 }
 
@@ -101,7 +103,8 @@ export async function runLoop(deps: PipelineDeps, signal: AbortSignal): Promise<
     try {
       const progressed = await runOnce(deps);
       backoffMs = 1000;
-      if (!progressed) await sleep(deps.cfg.polling.intervalMs, signal);
+      // boşta: newHeads sinyali VEYA intervalMs (güvenlik ağı) — hangisi önce
+      if (!progressed) await deps.headSignal.wait(deps.cfg.polling.intervalMs, signal);
     } catch (err) {
       deps.metrics.rpcErrors.inc();
       deps.phase.set('Degraded', err instanceof Error ? err.message : String(err));

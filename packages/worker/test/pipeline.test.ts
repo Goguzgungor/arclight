@@ -10,8 +10,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { extractEventDefs, parseWorkerConfig, type WorkerConfig } from '@arclight/core';
 import { getCursor } from '../src/db.js';
 import { createMetrics } from '../src/metrics.js';
-import { bootstrapIndexer, runOnce, type PipelineDeps } from '../src/pipeline.js';
+import { bootstrapIndexer, runLoop, runOnce, type PipelineDeps } from '../src/pipeline.js';
 import { createRpc } from '../src/rpc.js';
+import { HeadSignal } from '../src/signal.js';
 import { PhaseTracker } from '../src/status.js';
 import { startAnvil, type AnvilHandle } from './helpers/anvil.js';
 
@@ -72,6 +73,7 @@ describe('pipeline', () => {
       schema: 'idx_demo',
       metrics: createMetrics('demo'),
       phase: new PhaseTracker(),
+      headSignal: new HeadSignal(),
       log: pino({ level: 'silent' }),
     };
     await bootstrapIndexer(deps);
@@ -118,5 +120,43 @@ describe('pipeline', () => {
     expect(r.rows[0].m).toBe('8');
     const cursor = await getCursor(pool, 'idx_demo');
     expect(cursor).toBeGreaterThanOrEqual(8n);
+  });
+
+  it('runLoop: boştayken headSignal.notify() intervalMs beklemeden yeni tur başlatır', async () => {
+    const headSignal = new HeadSignal();
+    const localDeps: PipelineDeps = {
+      ...deps,
+      headSignal,
+      phase: new PhaseTracker(),
+      metrics: createMetrics('demo3'),
+      cfg: { ...deps.cfg, polling: { batchBlocks: 100, intervalMs: 60_000 } },
+    };
+    const ctrl = new AbortController();
+    const loop = runLoop(localDeps, ctrl.signal);
+    await new Promise((r) => setTimeout(r, 500)); // yetişip boşa düşsün
+
+    // 9. event'i üret ve sinyal ver — intervalMs (60 sn) dolmadan işlenmeli
+    const artifact = loadArtifact();
+    const wallet = createWalletClient({
+      account: privateKeyToAccount(PK), transport: http(anvil.url),
+    }).extend(publicActions);
+    const txHash = await wallet.writeContract({
+      address: contractAddress, abi: artifact.abi as never,
+      functionName: 'ping', args: [9n], chain: null,
+    });
+    await wallet.waitForTransactionReceipt({ hash: txHash });
+    headSignal.notify();
+
+    const t0 = Date.now();
+    let count = 0;
+    while (Date.now() - t0 < 5_000) {
+      const r = await pool.query(`SELECT count(*)::int AS c FROM idx_demo.emitter_ping`);
+      count = r.rows[0].c as number;
+      if (count === 9) break;
+      await new Promise((r2) => setTimeout(r2, 100));
+    }
+    ctrl.abort();
+    await loop;
+    expect(count).toBe(9);
   });
 });

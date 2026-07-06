@@ -30,6 +30,16 @@ export function createMetrics(indexerName: string) {
       help: 'dead-letter tablosuna düşen log sayısı',
       registers: [registry],
     }),
+    wsConnected: new Gauge({
+      name: 'arclight_ws_connected',
+      help: 'newHeads WS aboneliği bağlı mı (0/1)',
+      registers: [registry],
+    }),
+    headNotifications: new Counter({
+      name: 'arclight_head_notifications_total',
+      help: 'alınan newHeads bildirimi sayısı',
+      registers: [registry],
+    }),
     writeLatency: new Histogram({
       name: 'arclight_write_latency_seconds',
       help: 'batch commit süresi',
