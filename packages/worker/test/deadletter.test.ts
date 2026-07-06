@@ -10,6 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { extractEventDefs, parseWorkerConfig } from '@arclight/core';
 import { createMetrics } from '../src/metrics.js';
 import { bootstrapIndexer, runLoop, runOnce, type PipelineDeps } from '../src/pipeline.js';
+import { HeadSignal } from '../src/signal.js';
 import { createRpc } from '../src/rpc.js';
 import { PhaseTracker } from '../src/status.js';
 import { startAnvil, type AnvilHandle } from './helpers/anvil.js';
@@ -76,6 +77,7 @@ describe('dead-letter + degraded', () => {
       schema: 'idx_dl',
       metrics: createMetrics('dl'),
       phase: new PhaseTracker(),
+      headSignal: new HeadSignal(),
       log: pino({ level: 'silent' }),
     };
     await bootstrapIndexer(deps);
@@ -106,6 +108,7 @@ describe('dead-letter + degraded', () => {
       schema: 'idx_dg',
       metrics: createMetrics('dg'),
       phase: new PhaseTracker(),
+      headSignal: new HeadSignal(),
       log: pino({ level: 'silent' }),
     };
     await bootstrapIndexer(deps);

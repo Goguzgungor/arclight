@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { WorkerConfigSchema, type WorkerConfig } from './config.js';
+import { RpcUrlSchema, WorkerConfigSchema, type WorkerConfig } from './config.js';
 
 export const ABI_MOUNT_DIR = '/etc/arclight/abis';
 export const CONFIG_MOUNT_PATH = '/etc/arclight/config/config.json';
@@ -8,7 +8,7 @@ export const CONFIG_MOUNT_PATH = '/etc/arclight/config/config.json';
 export const IndexerSpecSchema = z.object({
   network: z.object({
     chainId: z.number().int().positive(),
-    rpc: z.array(z.string().url()).min(1),
+    rpc: z.array(RpcUrlSchema).min(1),
     finalityTag: z.enum(['finalized', 'safe', 'latest']).default('finalized'),
   }),
   storage: z.object({

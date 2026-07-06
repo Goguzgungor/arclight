@@ -177,7 +177,7 @@ Sıra bilinçli: worker (asıl değer) operatörden önce — M2 sonunda operat�
 
 ### MVP sonrası
 
-- **v1.1:** Embedded + Service depolama modları · PostgREST · operatör leader-election · WebSocket düşük-gecikme tip takibi.
+- **v1.1:** Embedded + Service depolama modları · PostgREST · operatör leader-election · WebSocket düşük-gecikme tip takibi *(newHeads-tetikleyici kısmı öne çekildi — bkz. `2026-07-06-ws-hybrid-listening-design.md`)*.
 - **v2:** Hasura/GraphQL · multi-tenant DB optimizasyonları · backfill paralelizmi · ABI-migration UX · CloudNativePG embedded backend.
 
 ## 10. Riskler

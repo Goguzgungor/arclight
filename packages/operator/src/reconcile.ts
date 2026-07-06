@@ -30,11 +30,21 @@ export async function reconcile(deps: ReconcileDeps, cr: Indexer): Promise<void>
   const uid = cr.metadata?.uid;
   if (!name || !namespace || !uid) return;
 
-  const setCondition = (c: IndexerCondition) =>
-    deps.kube.patchIndexerStatus(namespace, name, {
+  // Değişmemiş status'u tekrar patch'leme: her patch yeni bir watch event'i
+  // üretir ve reconcile fırtınasına (self-feeding loop → OOM) yol açar.
+  const current = cr.status?.conditions?.find((c) => c.type === 'Provisioned');
+  const setCondition = (c: IndexerCondition) => {
+    const unchanged =
+      cr.status?.observedGeneration === cr.metadata?.generation &&
+      current?.status === c.status &&
+      current?.reason === c.reason &&
+      current?.message === c.message;
+    if (unchanged) return Promise.resolve();
+    return deps.kube.patchIndexerStatus(namespace, name, {
       observedGeneration: cr.metadata?.generation,
       conditions: [c],
     });
+  };
 
   const parsed = IndexerSpecSchema.safeParse(cr.spec);
   if (!parsed.success) {

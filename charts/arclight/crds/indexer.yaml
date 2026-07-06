@@ -51,6 +51,8 @@ spec:
                       minItems: 1
                       items:
                         type: string
+                        pattern: '^(https?|wss?)://'
+                        description: "http(s):// polling/okuma; ws(s):// newHeads aboneliği + okuma"
                     finalityTag:
                       type: string
                       enum: [finalized, safe, latest]

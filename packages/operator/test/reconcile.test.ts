@@ -126,6 +126,64 @@ describe('reconcile', () => {
     expect(kube.statusPatches[0]!.conditions?.[0]!.reason).toBe('InvalidSpec');
   });
 
+  it('status zaten güncelse tekrar patch atmaz (reconcile fırtınası koruması)', async () => {
+    const kube = makeFake();
+    const cr = makeCr();
+    cr.status = {
+      observedGeneration: 3,
+      conditions: [
+        {
+          type: 'Provisioned',
+          status: 'True',
+          reason: 'Reconciled',
+          lastTransitionTime: '2026-07-06T00:00:00.000Z',
+        },
+      ],
+    };
+    await reconcile({ kube, workerImage: 'w:test', log }, cr);
+    expect(kube.applied).toHaveLength(5); // kaynaklar yine apply edilir (SSA idempotent)
+    expect(kube.statusPatches).toEqual([]);
+  });
+
+  it('generation değiştiyse status yeniden patch\'lenir', async () => {
+    const kube = makeFake();
+    const cr = makeCr();
+    cr.metadata!.generation = 4;
+    cr.status = {
+      observedGeneration: 3,
+      conditions: [
+        {
+          type: 'Provisioned',
+          status: 'True',
+          reason: 'Reconciled',
+          lastTransitionTime: '2026-07-06T00:00:00.000Z',
+        },
+      ],
+    };
+    await reconcile({ kube, workerImage: 'w:test', log }, cr);
+    expect(kube.statusPatches).toHaveLength(1);
+    expect(kube.statusPatches[0]!.observedGeneration).toBe(4);
+  });
+
+  it('aynı hata koşulu tekrar patch\'lenmez', async () => {
+    const kube = makeFake({ cms: {} });
+    const cr = makeCr();
+    cr.status = {
+      observedGeneration: 3,
+      conditions: [
+        {
+          type: 'Provisioned',
+          status: 'False',
+          reason: 'MissingAbiConfigMap',
+          message: 'ConfigMap emitter-abi/abi.json bulunamadı',
+          lastTransitionTime: '2026-07-06T00:00:00.000Z',
+        },
+      ],
+    };
+    await reconcile({ kube, workerImage: 'w:test', log }, cr);
+    expect(kube.statusPatches).toEqual([]);
+  });
+
   it('metadata eksikse hiçbir çağrı yapmaz', async () => {
     const kube = makeFake();
     await reconcile({ kube, workerImage: 'w:test', log }, { metadata: {} } as Indexer);

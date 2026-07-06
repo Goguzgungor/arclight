@@ -6,9 +6,11 @@ import {
 } from '@arclight/core';
 import { createMetrics } from './metrics.js';
 import { bootstrapIndexer, runLoop, type PipelineDeps } from './pipeline.js';
-import { createRpc, filterHealthyRpcs } from './rpc.js';
+import { createRpc, filterHealthyRpcs, splitRpcUrls } from './rpc.js';
 import { startHealthServer } from './health.js';
+import { HeadSignal } from './signal.js';
 import { PhaseTracker } from './status.js';
+import { subscribeNewHeads } from './ws.js';
 import { crStatusTargetFromEnv, startCrStatusLoop, type CrStatusTarget } from './crstatus.js';
 
 const log = pino({ level: process.env['LOG_LEVEL'] ?? 'info' });
@@ -39,6 +41,7 @@ async function main(): Promise<void> {
   }
 
   const pool = new pg.Pool({ connectionString: dsn });
+  const headSignal = new HeadSignal();
   const deps: PipelineDeps = {
     client: createRpc(rpcs),
     pool,
@@ -47,9 +50,26 @@ async function main(): Promise<void> {
     schema: schemaName(cfg.indexerName),
     metrics,
     phase,
+    headSignal,
     log,
   };
   await bootstrapIndexer(deps);
+
+  // ws ucu varsa newHeads aboneliği pipeline'ı anında uyandırır;
+  // polling intervalMs güvenlik ağı olarak kalır
+  const { ws: wsUrls } = splitRpcUrls(rpcs);
+  const subscription = wsUrls.length
+    ? subscribeNewHeads({
+        wsUrls,
+        onHead: () => {
+          metrics.headNotifications.inc();
+          headSignal.notify();
+        },
+        onStateChange: (connected) => metrics.wsConnected.set(connected ? 1 : 0),
+        log,
+      })
+    : null;
+  if (!wsUrls.length) log.info('ws RPC ucu yok — salt polling modu');
   let crTarget: CrStatusTarget | null = null;
   try {
     crTarget = crStatusTargetFromEnv();
@@ -69,6 +89,7 @@ async function main(): Promise<void> {
   process.on('SIGINT', shutdown);
 
   await runLoop(deps, ctrl.signal);
+  subscription?.close();
   stopCrStatus();
   server.close();
   await pool.end();

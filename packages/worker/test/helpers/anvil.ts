@@ -3,6 +3,7 @@ import { createServer } from 'node:net';
 
 export interface AnvilHandle {
   url: string;
+  wsUrl: string;
   stop: () => void;
 }
 
@@ -33,6 +34,7 @@ export async function startAnvil(opts?: {
     exited = true;
   });
   const url = `http://127.0.0.1:${port}`;
+  const wsUrl = `ws://127.0.0.1:${port}`;
   // Hazır olana kadar bekle (en fazla 15 sn); process erken ölürse hemen bildir
   for (let i = 0; i < 150; i++) {
     if (exited) throw new Error(`anvil ${port} portunda başlatılamadı (erken çıktı)`);
@@ -42,7 +44,7 @@ export async function startAnvil(opts?: {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }),
       });
-      if (res.ok) return { url, stop: () => proc.kill() };
+      if (res.ok) return { url, wsUrl, stop: () => proc.kill() };
     } catch {
       await new Promise((r) => setTimeout(r, 100));
     }

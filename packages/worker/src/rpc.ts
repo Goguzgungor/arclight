@@ -1,14 +1,55 @@
 import {
-  createPublicClient, fallback, http,
+  createPublicClient, fallback, http, webSocket,
   type Log, type PublicClient,
 } from 'viem';
 
 export class ChainIdMismatchError extends Error {}
 
+export interface RpcUrlGroups {
+  http: string[];
+  ws: string[];
+}
+
+export function splitRpcUrls(urls: string[]): RpcUrlGroups {
+  const groups: RpcUrlGroups = { http: [], ws: [] };
+  for (const u of urls) {
+    (u.startsWith('ws://') || u.startsWith('wss://') ? groups.ws : groups.http).push(u);
+  }
+  return groups;
+}
+
+// Ham WebSocket ile tek seferlik eth_chainId — viem transport'u açık soket
+// bırakmasın diye sağlık kontrolünde kullanılır.
+export function wsChainId(url: string, timeoutMs = 5_000): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const sock = new WebSocket(url);
+    const fail = (msg: string): void => {
+      clearTimeout(timer);
+      sock.close();
+      reject(new Error(msg));
+    };
+    const timer = setTimeout(() => fail(`ws chainId zaman aşımı: ${url}`), timeoutMs);
+    sock.onopen = () =>
+      sock.send(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }));
+    sock.onmessage = (ev) => {
+      clearTimeout(timer);
+      sock.close();
+      const body = JSON.parse(String(ev.data)) as { result?: string };
+      if (body.result) resolve(Number(body.result));
+      else reject(new Error(`eth_chainId sonuç dönmedi: ${url}`));
+    };
+    sock.onerror = () => fail(`ws bağlantı hatası: ${url}`);
+  });
+}
+
 export function createRpc(urls: string[]): PublicClient {
+  const { http: httpUrls, ws: wsUrls } = splitRpcUrls(urls);
   return createPublicClient({
     transport: fallback(
-      urls.map((u) => http(u, { timeout: 10_000, retryCount: 2 })),
+      [
+        ...wsUrls.map((u) => webSocket(u, { timeout: 10_000, retryCount: 2 })),
+        ...httpUrls.map((u) => http(u, { timeout: 10_000, retryCount: 2 })),
+      ],
       { rank: true },
     ),
   });
@@ -21,6 +62,9 @@ export async function filterHealthyRpcs(
   const checks = await Promise.all(
     urls.map(async (url) => {
       try {
+        if (url.startsWith('ws://') || url.startsWith('wss://')) {
+          return (await wsChainId(url)) === expectedChainId ? url : null;
+        }
         const client = createPublicClient({ transport: http(url, { timeout: 5_000, retryCount: 0 }) });
         return (await client.getChainId()) === expectedChainId ? url : null;
       } catch {

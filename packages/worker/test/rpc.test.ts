@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  createRpc, fetchLogs, filterHealthyRpcs, getBlockTimes, getFinalizedBlockNumber,
+  createRpc, fetchLogs, filterHealthyRpcs, getBlockTimes, getFinalizedBlockNumber, splitRpcUrls,
 } from '../src/rpc.js';
 import { startAnvil, type AnvilHandle } from './helpers/anvil.js';
 
@@ -30,6 +30,28 @@ describe('rpc', () => {
     const client = createRpc([anvil.url]);
     const times = await getBlockTimes(client, [0n]);
     expect(times.get(0n)).toBeInstanceOf(Date);
+  });
+
+  it('splitRpcUrls: şemaya göre ayırır', () => {
+    expect(
+      splitRpcUrls(['https://a.example', 'ws://b.example', 'wss://c.example', 'http://d.example']),
+    ).toEqual({
+      http: ['https://a.example', 'http://d.example'],
+      ws: ['ws://b.example', 'wss://c.example'],
+    });
+  });
+
+  it('filterHealthyRpcs: ws ucu da chainId ile doğrulanır', async () => {
+    const healthy = await filterHealthyRpcs(
+      ['ws://127.0.0.1:1', anvil.wsUrl, anvil.url], 31337,
+    );
+    expect(healthy).toEqual([anvil.wsUrl, anvil.url]);
+  });
+
+  it('createRpc: ws ucu üzerinden okuma çalışır', async () => {
+    const client = createRpc([anvil.wsUrl]);
+    const n = await getFinalizedBlockNumber(client, 'latest');
+    expect(n).toBeGreaterThanOrEqual(0n);
   });
 
   it('fetchLogs boş aralıkta boş döner', async () => {
