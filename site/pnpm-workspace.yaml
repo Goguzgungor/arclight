@@ -1,0 +1,4 @@
+# Marks site/ as its own pnpm root so the repo workspace (packages/*, e2e)
+# and its CI (`pnpm -r build/test`) are unaffected.
+packages:
+  - "."
