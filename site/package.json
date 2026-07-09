@@ -2,6 +2,10 @@
   "name": "arckive-site",
   "private": true,
   "version": "0.1.0",
+  "packageManager": "pnpm@10.12.1",
+  "pnpm": {
+    "ignoredBuiltDependencies": ["sharp"]
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
