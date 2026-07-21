@@ -7,8 +7,8 @@ export interface AnvilHandle {
   stop: () => void;
 }
 
-// OS'ten gerçekten boş bir port iste — sabit/pid-tabanlı aralıklar paralel test
-// dosyaları arasında çakışıyor (vitest forks pool'unda pid'ler bitişik olabiliyor).
+// Ask the OS for a genuinely free port — fixed/pid-based ranges collide across
+// parallel test files (pids can be adjacent in vitest's forks pool).
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const srv = createServer();
@@ -35,9 +35,9 @@ export async function startAnvil(opts?: {
   });
   const url = `http://127.0.0.1:${port}`;
   const wsUrl = `ws://127.0.0.1:${port}`;
-  // Hazır olana kadar bekle (en fazla 15 sn); process erken ölürse hemen bildir
+  // Wait until ready (at most 15 s); report immediately if the process dies early
   for (let i = 0; i < 150; i++) {
-    if (exited) throw new Error(`anvil ${port} portunda başlatılamadı (erken çıktı)`);
+    if (exited) throw new Error(`anvil failed to start on port ${port} (exited early)`);
     try {
       const res = await fetch(url, {
         method: 'POST',
@@ -50,5 +50,5 @@ export async function startAnvil(opts?: {
     }
   }
   proc.kill();
-  throw new Error('anvil başlatılamadı — foundry kurulu mu?');
+  throw new Error('anvil failed to start — is foundry installed?');
 }

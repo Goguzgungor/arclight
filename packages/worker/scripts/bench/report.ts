@@ -1,6 +1,6 @@
-// results.json → kendi kendine yeten tek dosyalık HTML rapor (CDN yok,
-// inline CSS + SVG; açık/koyu tema). Rapor dili İngilizce — arckive.org kitlesi.
-//   node --experimental-strip-types scripts/bench/report.ts [results.json yolu]
+// results.json → self-contained single-file HTML report (no CDN,
+// inline CSS + SVG; light/dark theme). Report language is English — the arckive.org audience.
+//   node --experimental-strip-types scripts/bench/report.ts [path to results.json]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import type { BackfillResult } from './backfill.ts';
@@ -27,7 +27,7 @@ const fmtS = (ms: number) => (ms >= 10_000 ? `${Math.round(ms / 1000)}s` : `${(m
 const fmtN = (n: number) => n.toLocaleString('en-US');
 const sec = (ms: number) => `${(ms / 1000).toFixed(2)}s`;
 
-// ---- eksen yardımcıları -------------------------------------------------
+// ---- axis helpers -------------------------------------------------------
 
 function niceTicks(max: number, count = 4): number[] {
   const raw = max / count;
@@ -38,9 +38,9 @@ function niceTicks(max: number, count = 4): number[] {
   return ticks;
 }
 
-// ---- grafikler ----------------------------------------------------------
+// ---- charts -------------------------------------------------------------
 
-// tazelik: örnek başına gecikme noktaları + p50 referans çizgisi
+// freshness: per-sample latency dots + p50 reference line
 function freshnessChart(f: FreshnessResult): string {
   const W = 720;
   const H = 260;
@@ -77,7 +77,7 @@ function freshnessChart(f: FreshnessResult): string {
   </svg>`;
 }
 
-// backfill: kalan blok sayısı → 0 (yakalama eğrisi)
+// backfill: blocks remaining → 0 (catch-up curve)
 function backfillChart(b: BackfillResult): string {
   const W = 720;
   const H = 260;
@@ -124,7 +124,7 @@ function backfillChart(b: BackfillResult): string {
   </svg>`;
 }
 
-// ---- bölümler -----------------------------------------------------------
+// ---- sections -----------------------------------------------------------
 
 function tile(label: string, value: string, sub?: string): string {
   return `<div class="tile"><div class="tile-label">${esc(label)}</div>
@@ -213,7 +213,7 @@ function burstSection(b: BurstResult | { error: string } | undefined): string {
   </div>`;
 }
 
-// ---- sayfa --------------------------------------------------------------
+// ---- page ---------------------------------------------------------------
 
 export function render(results: Results): string {
   const f = ok(results.freshness);
@@ -312,7 +312,7 @@ function main(): void {
   const results = JSON.parse(readFileSync(path, 'utf8')) as Results;
   const out = join(dirname(path), 'report.html');
   writeFileSync(out, render(results));
-  console.log(`rapor: ${out}`);
+  console.log(`report: ${out}`);
 }
 
 main();

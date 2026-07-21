@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { GenericKind, modelToGroupVersionKind } from 'kubernetes-fluent-client';
 import { Indexer } from '../src/kinds.js';
 
-describe('Indexer kind kaydı', () => {
-  it('GenericKind türevidir ve GVK kayıtlıdır', () => {
+describe('Indexer kind registration', () => {
+  it('is a GenericKind subclass and the GVK is registered', () => {
     expect(new Indexer()).toBeInstanceOf(GenericKind);
     const gvk = modelToGroupVersionKind(Indexer.name);
     expect(gvk).toMatchObject({

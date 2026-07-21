@@ -18,7 +18,7 @@ export function extractEventDefs(
   selectedEvents?: string[],
 ): EventDef[] {
   if (!Array.isArray(abi)) {
-    throw new AbiError(`${contractName}: ABI bir JSON dizisi olmalı`);
+    throw new AbiError(`${contractName}: ABI must be a JSON array`);
   }
   const events = abi.filter(
     (e): e is AbiEvent => (e as { type?: string } | null)?.type === 'event',
@@ -26,7 +26,7 @@ export function extractEventDefs(
   if (selectedEvents?.length) {
     for (const name of selectedEvents) {
       if (!events.some((e) => e.name === name)) {
-        throw new AbiError(`${contractName}: '${name}' event'i ABI'de yok`);
+        throw new AbiError(`${contractName}: event '${name}' not found in ABI`);
       }
     }
   }

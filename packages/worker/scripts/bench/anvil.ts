@@ -1,5 +1,5 @@
-// Lokal anvil yardımcıları: emitter deploy, otomatik/manuel blok üretimi,
-// nonce'ları elle yönetilen yoğun ping gönderimi (burst tohumu).
+// Local anvil helpers: emitter deploy, automatic/manual block production,
+// dense ping sending with manually managed nonces (burst seeding).
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +8,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
-// anvil'in 0. deterministik hesabı
+// anvil's deterministic account #0
 const PK = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
 const FIXTURE = fileURLToPath(new URL('../../test/fixtures/emitter', import.meta.url));
 
@@ -60,8 +60,8 @@ export async function deployEmitter(): Promise<EmitterHandle> {
   };
 }
 
-// receipt beklemeden, nonce'ları elle vererek n adet ping tx'i gönderir
-// (automine kapalıyken mempool'a yığılır; çağıran mine eder)
+// sends n ping txs without waiting for receipts, assigning nonces manually
+// (with automine off they pile up in the mempool; the caller mines)
 export async function sendPings(e: EmitterHandle, start: number, n: number, nonce0: number): Promise<number> {
   for (let i = 0; i < n; i++) {
     await e.wallet.writeContract({

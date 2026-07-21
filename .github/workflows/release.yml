@@ -20,7 +20,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Operatör imajı
+      - name: Operator image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -32,7 +32,7 @@ jobs:
             ghcr.io/goguzgungor/arclight-operator:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Worker imajı
+      - name: Worker image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -44,16 +44,16 @@ jobs:
             ghcr.io/goguzgungor/arclight-worker:sha-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: install.yaml üret ve rolling "latest" release'ine yükle
+      - name: build install.yaml and upload to the rolling "latest" release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           scripts/build-install.sh
           gh release view latest >/dev/null 2>&1 || \
             gh release create latest --title "latest" \
-              --notes "Rolling release: main'in son hali. Kurulum: kubectl apply -f https://arckive.org/install.yaml"
+              --notes "Rolling release: latest main. Install: kubectl apply -f https://arckive.org/install.yaml"
           gh release upload latest install.yaml --clobber
-      - name: install.yaml'ı site-landing'e senkronla (arckive.org yayını)
+      - name: sync install.yaml to site-landing (served at arckive.org)
         run: |
           cp install.yaml "$RUNNER_TEMP/install.yaml"
           git config user.name "github-actions[bot]"
@@ -64,8 +64,8 @@ jobs:
           cp "$RUNNER_TEMP/install.yaml" site/public/install.yaml
           if ! git diff --quiet -- site/public/install.yaml || [ -n "$(git status --porcelain site/public/install.yaml)" ]; then
             git add site/public/install.yaml
-            git commit -m "site: install.yaml güncellendi (main ${GITHUB_SHA:0:7})"
+            git commit -m "site: update install.yaml (main ${GITHUB_SHA:0:7})"
             git push origin site-landing
           else
-            echo "install.yaml değişmedi, site push atlanıyor"
+            echo "install.yaml unchanged, skipping site push"
           fi

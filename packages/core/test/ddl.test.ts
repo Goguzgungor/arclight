@@ -15,7 +15,7 @@ const TRANSFER_ABI = [
 ];
 
 describe('pgTypeFor', () => {
-  it('spec tip eşlemesi', () => {
+  it('maps types according to the spec', () => {
     expect(pgTypeFor('address')).toBe('text');
     expect(pgTypeFor('uint256')).toBe('numeric(78,0)');
     expect(pgTypeFor('int128')).toBe('numeric(78,0)');
@@ -26,13 +26,13 @@ describe('pgTypeFor', () => {
     expect(pgTypeFor('uint256[]')).toBe('jsonb');
     expect(pgTypeFor('tuple')).toBe('jsonb');
   });
-  it('bilinmeyen tip DdlError', () => {
+  it('unknown type throws DdlError', () => {
     expect(() => pgTypeFor('function')).toThrow(DdlError);
   });
 });
 
 describe('eventColumns', () => {
-  it('ortak kolonla çakışan parametre param_ önekli; adsız parametre argN', () => {
+  it('parameter colliding with a common column gets a param_ prefix; unnamed parameter becomes argN', () => {
     const abi = [
       {
         type: 'event', name: 'Weird',
@@ -49,7 +49,7 @@ describe('eventColumns', () => {
 });
 
 describe('buildEventTable', () => {
-  it('ortak kolonlar + parametreler + unique + indexed index', () => {
+  it('common columns + parameters + unique constraint + indexes for indexed params', () => {
     const [def] = extractEventDefs('usdc', ADDR, TRANSFER_ABI);
     const spec = buildEventTable('idx_demo', def!);
     const create = spec.statements[0]!;
@@ -61,7 +61,7 @@ describe('buildEventTable', () => {
     expect(spec.statements.filter((s) => s.startsWith('CREATE INDEX'))).toHaveLength(2);
   });
 
-  it('_ingested_at meta kolonu: CREATE içinde + mevcut tablolar için ALTER', () => {
+  it('_ingested_at meta column: in CREATE + ALTER for existing tables', () => {
     const [def] = extractEventDefs('usdc', ADDR, TRANSFER_ABI);
     const spec = buildEventTable('idx_demo', def!);
     expect(spec.statements[0]).toContain('"_ingested_at" timestamptz NOT NULL DEFAULT now()');
@@ -71,7 +71,7 @@ describe('buildEventTable', () => {
     );
   });
 
-  it('_ingestedAt adlı event parametresi meta kolonla çakışmaz (ingested_at olur)', () => {
+  it('event parameter named _ingestedAt does not collide with the meta column (becomes ingested_at)', () => {
     const abi = [
       {
         type: 'event',
@@ -80,13 +80,13 @@ describe('buildEventTable', () => {
       },
     ];
     const [def] = extractEventDefs('x', ADDR, abi);
-    // toSnakeCase baştaki _ soyar; sonuç DB meta kolonu "_ingested_at" ile farklı
+    // toSnakeCase strips the leading _; the result differs from the DB meta column "_ingested_at"
     expect(eventColumns(def!.event).map((c) => c.name)).toEqual(['ingested_at']);
   });
 });
 
 describe('buildControlTables', () => {
-  it('şema + üç kontrol tablosu', () => {
+  it('schema + three control tables', () => {
     const stmts = buildControlTables('idx_demo');
     expect(stmts[0]).toContain('CREATE SCHEMA IF NOT EXISTS "idx_demo"');
     expect(stmts.join(' ')).toContain('_cursor');

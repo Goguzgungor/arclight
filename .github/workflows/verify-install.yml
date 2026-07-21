@@ -8,9 +8,9 @@ jobs:
       - uses: helm/kind-action@v1
         with:
           cluster_name: install-verify
-      - name: arckive.org/install.yaml uygula
+      - name: apply arckive.org/install.yaml
         run: kubectl apply -f https://arckive.org/install.yaml
-      - name: operatör Ready olur
+      - name: operator becomes Ready
         run: kubectl -n arclight-system rollout status deploy/arclight-operator --timeout=180s
-      - name: CRD sunuluyor
+      - name: CRD is served
         run: kubectl get indexers -A

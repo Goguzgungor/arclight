@@ -22,11 +22,11 @@ interface CrdDoc {
   };
 }
 
-describe('Indexer CRD manifesti', () => {
+describe('Indexer CRD manifest', () => {
   const crd = load(readFileSync(path, 'utf8')) as CrdDoc;
   const v = crd.spec.versions[0]!;
 
-  it('GVK ve scope doğru', () => {
+  it('GVK and scope are correct', () => {
     expect(crd.metadata.name).toBe('indexers.arclight.dev');
     expect(crd.spec.group).toBe('arclight.dev');
     expect(crd.spec.scope).toBe('Namespaced');
@@ -34,11 +34,11 @@ describe('Indexer CRD manifesti', () => {
     expect(v.name).toBe('v1alpha1');
   });
 
-  it('status subresource açık', () => {
+  it('status subresource is enabled', () => {
     expect(v.subresources?.status).toBeDefined();
   });
 
-  it('printer kolonları PHASE/CURRENT/HEAD/LAG', () => {
+  it('printer columns are PHASE/CURRENT/HEAD/LAG', () => {
     expect(v.additionalPrinterColumns?.map((c) => [c.name, c.jsonPath])).toEqual([
       ['Phase', '.status.phase'],
       ['Current', '.status.currentBlock'],
@@ -47,7 +47,7 @@ describe('Indexer CRD manifesti', () => {
     ]);
   });
 
-  it('spec şeması zod ile aynı üst alanları tanımlar', () => {
+  it('spec schema defines the same top-level fields as zod', () => {
     expect(Object.keys(v.schema.openAPIV3Schema.properties.spec.properties).sort()).toEqual(
       ['contracts', 'network', 'polling', 'storage'],
     );

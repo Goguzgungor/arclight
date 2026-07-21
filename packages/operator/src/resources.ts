@@ -23,7 +23,7 @@ export interface DesiredResources {
 
 export function workerResourceName(crName: string): string {
   const name = `arclight-${crName}`;
-  if (name.length > 63) throw new Error(`kaynak adı 63 karakteri aşıyor: ${name}`);
+  if (name.length > 63) throw new Error(`resource name exceeds 63 characters: ${name}`);
   return name;
 }
 

@@ -38,16 +38,16 @@ afterAll(() => server.close());
 const target = () => ({ baseUrl, token: 'test-token', namespace: 'default', name: 'demo' });
 
 describe('crStatusTargetFromEnv', () => {
-  it('INDEXER_CR_NAME yoksa null döner', () => {
+  it('returns null when INDEXER_CR_NAME is missing', () => {
     expect(crStatusTargetFromEnv({})).toBeNull();
   });
-  it('KUBERNETES_SERVICE_HOST yoksa null döner', () => {
+  it('returns null when KUBERNETES_SERVICE_HOST is missing', () => {
     expect(crStatusTargetFromEnv({ INDEXER_CR_NAME: 'demo' })).toBeNull();
   });
 });
 
 describe('patchCrStatus', () => {
-  it('SSA apply-patch isteğini doğru atar', async () => {
+  it('sends the SSA apply-patch request correctly', async () => {
     captured.length = 0;
     await patchCrStatus(target(), { phase: 'Live', currentBlock: 42, headBlock: 42, lag: 0 });
     expect(captured).toHaveLength(1);
@@ -63,7 +63,7 @@ describe('patchCrStatus', () => {
     expect(body.status).toEqual({ phase: 'Live', currentBlock: 42, headBlock: 42, lag: 0 });
   });
 
-  it('2xx dışı yanıtta reject eder', async () => {
+  it('rejects on a non-2xx response', async () => {
     statusCode = 403;
     await expect(
       patchCrStatus(target(), { phase: 'Live', currentBlock: 1, headBlock: 1, lag: 0 }),
@@ -73,7 +73,7 @@ describe('patchCrStatus', () => {
 });
 
 describe('startCrStatusLoop', () => {
-  it('periyodik patch atar, tracker durumunu yansıtır ve durdurulabilir', async () => {
+  it('patches periodically, reflects tracker state, and can be stopped', async () => {
     captured.length = 0;
     const tracker = new PhaseTracker();
     tracker.set('Backfilling');
@@ -87,6 +87,6 @@ describe('startCrStatusLoop', () => {
     expect(body.status.phase).toBe('Backfilling');
     expect(body.status.lag).toBe(90);
     await new Promise((r) => setTimeout(r, 60));
-    expect(captured.length).toBe(seen); // durduktan sonra istek yok
+    expect(captured.length).toBe(seen); // no requests after stopping
   });
 });

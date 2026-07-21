@@ -52,7 +52,13 @@ spec:
                       items:
                         type: string
                         pattern: '^(https?|wss?)://'
-                        description: "http(s):// polling/okuma; ws(s):// newHeads aboneliği + okuma"
+                        description: "http(s):// for polling/reads; ws(s):// for newHeads subscription + reads"
+                    announceRpc:
+                      type: array
+                      items:
+                        type: string
+                        pattern: '^wss?://'
+                        description: "ws endpoints used only to listen for newHeads — never added to the query pool"
                     finalityTag:
                       type: string
                       enum: [finalized, safe, latest]

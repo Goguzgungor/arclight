@@ -16,14 +16,14 @@ describe('health + metrics', () => {
 
   it('/healthz: Provisioning 200, Degraded 503', async () => {
     expect((await fetch(`http://127.0.0.1:${port()}/healthz`)).status).toBe(200);
-    phase.set('Degraded', 'rpc koptu');
+    phase.set('Degraded', 'rpc is down');
     const res = await fetch(`http://127.0.0.1:${port()}/healthz`);
     expect(res.status).toBe(503);
-    expect(await res.json()).toEqual({ phase: 'Degraded', lastError: 'rpc koptu' });
+    expect(await res.json()).toEqual({ phase: 'Degraded', lastError: 'rpc is down' });
     phase.set('Live');
   });
 
-  it('/metrics: arclight metrikleri indexer etiketiyle', async () => {
+  it('/metrics: arclight metrics carry the indexer label', async () => {
     metrics.eventsIngested.inc(5);
     const body = await (await fetch(`http://127.0.0.1:${port()}/metrics`)).text();
     expect(body).toContain('arclight_events_ingested_total{indexer="demo"} 5');

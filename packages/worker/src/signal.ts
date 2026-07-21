@@ -3,12 +3,13 @@ export interface HeadInfo {
   timestamp: Date;
 }
 
-// newHeads sinyali ile pipeline uyanışı arasındaki latch + duyuru verisi.
-// Bekleyen yokken gelen sinyal bayrak olarak saklanır, art arda N sinyal tek
-// uyanışa yol açar. Birincil bağlantının duyurduğu en yüksek blok sıcak yolun
-// hedefi olur ('latest' modunda getBlock RTT'sini ve duyuran-node/sorgu-node
-// ayrışmasını ortadan kaldırır); tüm duyuruların timestamp'leri blok-zamanı
-// önbelleğine yazılır (getBlockTimes RTT'sini keser).
+// Latch between the newHeads signal and the pipeline wake-up, plus the
+// announcement data. A signal arriving while no one is waiting is stored as a
+// flag, and N back-to-back signals cause a single wake-up. The highest block
+// announced by the primary connection becomes the hot-path target (in 'latest'
+// mode this removes the getBlock RTT and the announcing-node/query-node
+// divergence); the timestamps of all announcements are written to the
+// block-time cache (cutting the getBlockTimes RTT).
 export class HeadSignal {
   private flagged = false;
   private waiter: (() => void) | null = null;

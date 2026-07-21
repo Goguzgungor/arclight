@@ -1,4 +1,4 @@
-// bench senaryolarının ortak istatistik yardımcıları
+// shared statistics helpers for the bench scenarios
 export interface LatencyStats {
   count: number;
   min: number;
@@ -14,7 +14,7 @@ function percentile(sorted: number[], p: number): number {
 }
 
 export function latencyStats(samples: number[]): LatencyStats {
-  if (samples.length === 0) throw new Error('boş örneklem');
+  if (samples.length === 0) throw new Error('empty sample set');
   const s = [...samples].sort((a, b) => a - b);
   return {
     count: s.length,
@@ -26,7 +26,7 @@ export function latencyStats(samples: number[]): LatencyStats {
   };
 }
 
-// birim/sn; durationMs 0 ise 0 (bölme hatası yerine)
+// units/sec; 0 when durationMs is 0 (instead of a division error)
 export function rate(units: number, durationMs: number): number {
   return durationMs > 0 ? (units * 1000) / durationMs : 0;
 }

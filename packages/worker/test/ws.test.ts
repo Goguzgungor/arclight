@@ -8,7 +8,7 @@ const log = pino({ level: 'silent' });
 const until = async (cond: () => boolean, ms = 10_000): Promise<void> => {
   const t0 = Date.now();
   while (!cond()) {
-    if (Date.now() - t0 > ms) throw new Error('koşul zaman aşımı');
+    if (Date.now() - t0 > ms) throw new Error('condition timed out');
     await new Promise((r) => setTimeout(r, 50));
   }
 };
@@ -27,7 +27,7 @@ describe('subscribeNewHeads', () => {
   });
   afterAll(() => anvil.stop());
 
-  it('yeni blok kazılınca onHead payload (numara+timestamp) ile tetiklenir', async () => {
+  it('when a new block is mined, onHead fires with a payload (number+timestamp)', async () => {
     const heads: { number: bigint; timestamp: Date }[] = [];
     let primaryFlag: boolean | null = null;
     const states: boolean[] = [];
@@ -49,7 +49,7 @@ describe('subscribeNewHeads', () => {
     expect(primaryFlag).toBe(true);
   });
 
-  it('iki uca paralel abone olur; ikincinin duyurusu primary=false gelir', async () => {
+  it('subscribes to two endpoints in parallel; announcements from the second arrive with primary=false', async () => {
     const second = await startAnvil();
     const seen: boolean[] = [];
     const sub = subscribeNewHeads({
@@ -58,7 +58,7 @@ describe('subscribeNewHeads', () => {
       onStateChange: () => {},
       log,
     });
-    await new Promise((r) => setTimeout(r, 500)); // iki abonelik de açılsın
+    await new Promise((r) => setTimeout(r, 500)); // let both subscriptions open
     await mine(second.url);
     await until(() => seen.includes(false));
     sub.close();
@@ -66,7 +66,7 @@ describe('subscribeNewHeads', () => {
     expect(seen).toContain(false);
   });
 
-  it('sunucu ölünce onStateChange(false) gelir', async () => {
+  it('when the server dies, onStateChange(false) is delivered', async () => {
     const local = await startAnvil();
     const states: boolean[] = [];
     const sub = subscribeNewHeads({

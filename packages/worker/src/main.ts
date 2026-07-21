@@ -17,7 +17,7 @@ const log = pino({ level: process.env['LOG_LEVEL'] ?? 'info' });
 
 async function main(): Promise<void> {
   const dsn = process.env['DATABASE_URL'];
-  if (!dsn) throw new Error('DATABASE_URL zorunlu');
+  if (!dsn) throw new Error('DATABASE_URL is required');
   const configPath = process.env['CONFIG_PATH'] ?? '/etc/arclight/config.json';
   const cfg = parseWorkerConfig(JSON.parse(readFileSync(configPath, 'utf8')));
 
@@ -31,11 +31,12 @@ async function main(): Promise<void> {
     return extractEventDefs(c.name, c.address, abi, c.events.length ? c.events : undefined);
   });
 
-  // chainId uyuşmayan/ölü uçlar havuzdan düşer; hiçbiri kalmazsa Degraded bekle-yeniden-dene
+  // Endpoints with a mismatched chainId or that are dead drop out of the pool;
+  // if none remain, go Degraded and wait-retry
   let rpcs = await filterHealthyRpcs(cfg.network.rpc, cfg.network.chainId);
   while (rpcs.length === 0) {
-    phase.set('Degraded', `hiçbir RPC ucu chainId ${cfg.network.chainId} ile eşleşmedi`);
-    log.error({ rpc: cfg.network.rpc }, 'sağlıklı RPC yok — 30 sn sonra yeniden denenecek');
+    phase.set('Degraded', `no RPC endpoint matched chainId ${cfg.network.chainId}`);
+    log.error({ rpc: cfg.network.rpc }, 'no healthy RPC — retrying in 30 s');
     await new Promise((r) => setTimeout(r, 30_000));
     rpcs = await filterHealthyRpcs(cfg.network.rpc, cfg.network.chainId);
   }
@@ -55,10 +56,10 @@ async function main(): Promise<void> {
   };
   await bootstrapIndexer(deps);
 
-  // ws ucu varsa newHeads aboneliği pipeline'ı anında uyandırır;
-  // polling intervalMs güvenlik ağı olarak kalır. announceRpc uçları yalnız
-  // dinler (sorgu havuzuna girmez) ve listenin başında oldukları için
-  // birincil sinyal kaynağıdır.
+  // When a ws endpoint exists, the newHeads subscription wakes the pipeline
+  // immediately; polling intervalMs remains as a safety net. announceRpc
+  // endpoints only listen (they never join the query pool) and, being at the
+  // front of the list, are the primary signal source.
   const { ws: wsUrls } = splitRpcUrls(rpcs);
   const announceUrls = [...new Set([...cfg.network.announceRpc, ...wsUrls])];
   const subscription = announceUrls.length
@@ -72,20 +73,20 @@ async function main(): Promise<void> {
         log,
       })
     : null;
-  if (!announceUrls.length) log.info('ws RPC ucu yok — salt polling modu');
+  if (!announceUrls.length) log.info('no ws RPC endpoint — polling-only mode');
   let crTarget: CrStatusTarget | null = null;
   try {
     crTarget = crStatusTargetFromEnv();
   } catch (err) {
-    log.warn({ err }, 'CR status hedefi kurulamadı — status patch kapalı');
+    log.warn({ err }, 'could not set up CR status target — status patching disabled');
   }
   const stopCrStatus = crTarget ? startCrStatusLoop(crTarget, phase, log) : (): void => {};
-  if (crTarget) log.info({ cr: `${crTarget.namespace}/${crTarget.name}` }, 'CR status patch açık');
-  log.info({ indexer: cfg.indexerName, schema: deps.schema, rpcs }, 'arclight worker başladı');
+  if (crTarget) log.info({ cr: `${crTarget.namespace}/${crTarget.name}` }, 'CR status patching enabled');
+  log.info({ indexer: cfg.indexerName, schema: deps.schema, rpcs }, 'arclight worker started');
 
   const ctrl = new AbortController();
   const shutdown = () => {
-    log.info('kapanma sinyali alındı');
+    log.info('shutdown signal received');
     ctrl.abort();
   };
   process.on('SIGTERM', shutdown);
@@ -99,6 +100,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-  log.fatal({ err }, 'worker başlatılamadı');
+  log.fatal({ err }, 'worker failed to start');
   process.exit(1);
 });

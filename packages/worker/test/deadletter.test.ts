@@ -18,9 +18,9 @@ import { startAnvil, type AnvilHandle } from './helpers/anvil.js';
 const PK = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
 const FIXTURE = fileURLToPath(new URL('./fixtures/emitter', import.meta.url));
 
-// Kontratın gerçek event'i: Ping(uint256 indexed n, address who)
-// Kasıtlı yanlış ABI: aynı tipler (→ aynı topic0) ama hiçbir parametre indexed değil →
-// decodeEventLog data'da 64 bayt bekler, log'da 32 bayt var → DecodeError
+// The contract's real event: Ping(uint256 indexed n, address who)
+// Deliberately wrong ABI: same types (→ same topic0) but no parameter is indexed →
+// decodeEventLog expects 64 bytes in data, the log has 32 → DecodeError
 const WRONG_ABI = [
   {
     type: 'event', name: 'Ping',
@@ -48,7 +48,7 @@ describe('dead-letter + degraded', () => {
     anvil.stop();
   });
 
-  it("decode edilemeyen log dead-letter'a düşer, pipeline durmaz", async () => {
+  it('an undecodable log lands in the dead-letter table, the pipeline keeps going', async () => {
     const artifact = JSON.parse(
       readFileSync(`${FIXTURE}/out/Emitter.sol/Emitter.json`, 'utf8'),
     ) as { abi: unknown[]; bytecode: { object: `0x${string}` } };
@@ -81,17 +81,17 @@ describe('dead-letter + degraded', () => {
       log: pino({ level: 'silent' }),
     };
     await bootstrapIndexer(deps);
-    while (await runOnce(deps)) { /* yetiş */ }
+    while (await runOnce(deps)) { /* catch up */ }
 
     const dl = await pool.query(`SELECT error FROM idx_dl._dead_letter`);
     expect(dl.rows).toHaveLength(1);
     expect(dl.rows[0].error).toContain('decode');
     const rows = await pool.query(`SELECT count(*)::int AS c FROM idx_dl.emitter_ping`);
     expect(rows.rows[0].c).toBe(0);
-    expect(deps.phase.phase).toBe('Live'); // pipeline Degraded olmadı
+    expect(deps.phase.phase).toBe('Live'); // pipeline did not go Degraded
   });
 
-  it('RPC tamamen koparsa runLoop Degraded olur, dönünce toparlar', async () => {
+  it('if the RPC drops entirely, runLoop goes Degraded and recovers when it returns', async () => {
     const flaky = await startAnvil();
     const deps: PipelineDeps = {
       client: createRpc([flaky.url]),
@@ -118,7 +118,7 @@ describe('dead-letter + degraded', () => {
     await new Promise((r) => setTimeout(r, 500));
     expect(deps.phase.phase).toBe('Live');
 
-    flaky.stop(); // RPC koptu
+    flaky.stop(); // RPC is down
     await new Promise((r) => setTimeout(r, 3000));
     expect(deps.phase.phase).toBe('Degraded');
     expect(deps.phase.lastError).toBeTruthy();

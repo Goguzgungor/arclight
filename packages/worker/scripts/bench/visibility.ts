@@ -1,6 +1,6 @@
-// Sağlayıcı tabanı: RPC'nin WS newHeads aboneliği bir bloğu, validator
-// damgasından ne kadar sonra duyuruyor? (now - block.timestamp). Bu taban
-// hiçbir indexer'ın kontrolünde değildir; freshness bütçesinin bağlamıdır.
+// Provider floor: how long after the validator timestamp does the RPC's WS
+// newHeads subscription announce a block? (now - block.timestamp). This floor
+// is outside any indexer's control; it is the context for the freshness budget.
 import { PRIMARY_WS } from './freshness.ts';
 import { latencyStats, type LatencyStats } from './stats.ts';
 
@@ -18,10 +18,10 @@ export async function run(): Promise<VisibilityResult> {
     const out: number[] = [];
     const ws = new WebSocket(PRIMARY_WS);
     const fail = (msg: string): void => {
-      try { ws.close(); } catch { /* kapalı */ }
+      try { ws.close(); } catch { /* already closed */ }
       reject(new Error(msg));
     };
-    const timer = setTimeout(() => fail(`visibility zaman aşımı (${HEADS} head beklenirken)`), 120_000);
+    const timer = setTimeout(() => fail(`visibility timed out (waiting for ${HEADS} heads)`), 120_000);
     ws.onopen = () =>
       ws.send(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_subscribe', params: ['newHeads'] }));
     ws.onmessage = (ev) => {
@@ -35,7 +35,7 @@ export async function run(): Promise<VisibilityResult> {
         resolve(out);
       }
     };
-    ws.onerror = () => { clearTimeout(timer); fail(`ws bağlantı hatası: ${PRIMARY_WS}`); };
+    ws.onerror = () => { clearTimeout(timer); fail(`ws connection error: ${PRIMARY_WS}`); };
   });
   return { kind: 'visibility', url: PRIMARY_WS, samples, stats: latencyStats(samples) };
 }

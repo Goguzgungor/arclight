@@ -24,23 +24,23 @@ const ERC20_ABI = [
 const ADDR = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 
 describe('extractEventDefs', () => {
-  it('seçim yoksa tüm eventler; adres lowercase; topic0 hesaplı', () => {
+  it('returns all events when no selection given; address lowercased; topic0 computed', () => {
     const defs = extractEventDefs('usdc', ADDR, ERC20_ABI);
     expect(defs.map((d) => d.tableName)).toEqual(['usdc_transfer', 'usdc_approval']);
     expect(defs[0]!.address).toBe(ADDR.toLowerCase());
     expect(defs[0]!.topic0).toBe('0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef');
   });
 
-  it('seçilen eventler filtrelenir', () => {
+  it('filters down to the selected events', () => {
     const defs = extractEventDefs('usdc', ADDR, ERC20_ABI, ['Transfer']);
     expect(defs).toHaveLength(1);
   });
 
-  it("ABI'de olmayan seçim AbiError fırlatır", () => {
+  it('selecting an event missing from the ABI throws AbiError', () => {
     expect(() => extractEventDefs('usdc', ADDR, ERC20_ABI, ['Mint'])).toThrow(AbiError);
   });
 
-  it('overload edilen eventler topic0 eki alır', () => {
+  it('overloaded events get a topic0 suffix', () => {
     const abi = [
       { type: 'event', name: 'Ping', inputs: [{ name: 'a', type: 'uint256', indexed: false }] },
       { type: 'event', name: 'Ping', inputs: [{ name: 'a', type: 'address', indexed: false }] },

@@ -1,6 +1,6 @@
-// Senaryo 3 — Burst: lokal anvil'de decode+SQL yazma yolunun tavanı.
-// Automine kapatılıp N event az sayıda yoğun bloğa tohumlanır; worker soğuk
-// başlatılır, Live'a ulaşana dek geçen süre ölçülür.
+// Scenario 3 — Burst: the ceiling of the decode+SQL write path on local anvil.
+// Automine is turned off and N events are seeded into a few dense blocks; the
+// worker is cold-started and the time to reach Live is measured.
 import pg from 'pg';
 import {
   ANVIL_CHAIN_ID, ANVIL_URL, currentNonce, deployEmitter, mine, rpcCall,
@@ -32,7 +32,7 @@ export async function run(databaseUrl: string): Promise<BurstResult> {
     await rpcCall('eth_chainId');
   } catch {
     throw new Error(
-      `lokal anvil erişilemez (${ANVIL_URL}) — çalıştır: docker compose -f docker-compose.dev.yml up -d postgres anvil`,
+      `local anvil unreachable (${ANVIL_URL}) — run: docker compose -f docker-compose.dev.yml up -d postgres anvil`,
     );
   }
 
@@ -56,7 +56,7 @@ export async function run(databaseUrl: string): Promise<BurstResult> {
       blocks += 1;
     }
   } finally {
-    await setAutomine(true); // anvil'i bulduğumuz moda yakın bırak
+    await setAutomine(true); // leave anvil close to the mode we found it in
     await setIntervalMining(1);
   }
   const seedDurationMs = Math.round(performance.now() - seedT0);
@@ -77,7 +77,7 @@ export async function run(databaseUrl: string): Promise<BurstResult> {
   const t0 = performance.now();
   try {
     await waitFor(
-      'burst Live oldu',
+      'burst reached Live',
       async () => {
         const h = await healthz(PORT);
         if (h?.phase === 'Degraded') throw new Error(`worker Degraded: ${h.lastError ?? '?'}`);

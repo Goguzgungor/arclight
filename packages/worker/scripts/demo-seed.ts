@@ -21,7 +21,7 @@ const hash = await wallet.deployContract({
   abi: artifact.abi, bytecode: artifact.bytecode.object, chain: null,
 });
 const receipt = await wallet.waitForTransactionReceipt({ hash });
-console.log('Emitter deploy edildi:', receipt.contractAddress);
+console.log('Emitter deployed:', receipt.contractAddress);
 
 for (let i = 1; i <= 10; i++) {
   const tx = await wallet.writeContract({
@@ -30,4 +30,4 @@ for (let i = 1; i <= 10; i++) {
   });
   await wallet.waitForTransactionReceipt({ hash: tx });
 }
-console.log('10 ping gönderildi');
+console.log('10 pings sent');

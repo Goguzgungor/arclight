@@ -8,17 +8,17 @@ describe('naming', () => {
     expect(toSnakeCase('my-contract')).toBe('my_contract');
   });
 
-  it('şema adı idx_ önekli', () => {
+  it('schema name gets an idx_ prefix', () => {
     expect(schemaName('usdc-arc')).toBe('idx_usdc_arc');
   });
 
-  it('tablo adı; overload varsa topic0 eki', () => {
+  it('table name; topic0 suffix when overloaded', () => {
     expect(eventTableName('usdc', 'Transfer')).toBe('usdc_transfer');
     expect(eventTableName('usdc', 'Transfer', '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'))
       .toBe('usdc_transfer_ddf2');
   });
 
-  it('63 bayttan uzun tanımlayıcı reddedilir', () => {
+  it('rejects identifiers longer than 63 bytes', () => {
     expect(() => eventTableName('a'.repeat(60), 'VeryLongEventName')).toThrow();
   });
 });

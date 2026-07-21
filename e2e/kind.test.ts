@@ -19,7 +19,7 @@ let portForward: ChildProcess | undefined;
 beforeAll(async () => {
   await sh('bash', [`${E2E_DIR}scripts/e2e-setup.sh`], { cwd: REPO });
 
-  // anvil'i port-forward edip Emitter'ı deploy et + 10 event üret
+  // Port-forward anvil, deploy the Emitter + produce 10 events
   portForward = spawn('kubectl', ['port-forward', 'deploy/anvil', '8545:8545'], {
     stdio: 'ignore',
   });
@@ -45,7 +45,7 @@ afterAll(() => {
 });
 
 describe('kind e2e', () => {
-  it('2-3 YAML → Live fazında indexer ve 10 satır', async () => {
+  it('2-3 YAMLs → indexer in Live phase and 10 rows', async () => {
     await kubectl('apply', '-f', `${E2E_DIR}manifests/`);
 
     const phase = await retry(
@@ -64,19 +64,19 @@ describe('kind e2e', () => {
     expect(table).toMatch(/Live/);
   });
 
-  it('CR silinince worker kaynakları temizlenir, veri kalır', async () => {
+  it('deleting the CR cleans up worker resources, data survives', async () => {
     await kubectl('delete', 'indexer', 'demo', '--wait=true');
 
     await retry(
       async () => {
         try {
           await kubectl('get', 'deploy', 'arclight-demo');
-          return 'var';
+          return 'present';
         } catch {
-          return 'yok';
+          return 'gone';
         }
       },
-      (s) => s === 'yok',
+      (s) => s === 'gone',
       120_000,
     );
 

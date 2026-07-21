@@ -34,7 +34,7 @@ function makeLog(): RawLog {
 }
 
 describe('toSqlValue', () => {
-  it('bigint → string, address → lowercase, bytes → Buffer, dizi → JSON string', () => {
+  it('bigint → string, address → lowercase, bytes → Buffer, array → JSON string', () => {
     expect(toSqlValue('uint256', 5n)).toBe('5');
     expect(toSqlValue('address', '0xABCDEF0000000000000000000000000000000000'))
       .toBe('0xabcdef0000000000000000000000000000000000');
@@ -44,7 +44,7 @@ describe('toSqlValue', () => {
 });
 
 describe('decodeLogToRow', () => {
-  it('ortak kolonlar + parametre kolonları doğru dolu', () => {
+  it('common columns + parameter columns filled correctly', () => {
     const [def] = extractEventDefs('usdc', ADDR, TRANSFER_ABI as unknown as unknown[]);
     const t = new Date('2026-07-03T00:00:00Z');
     const row = decodeLogToRow(def!, makeLog(), t);
@@ -57,7 +57,7 @@ describe('decodeLogToRow', () => {
     expect(row.columns['value']).toBe('123456789');
   });
 
-  it('uyumsuz data DecodeError fırlatır', () => {
+  it('mismatched data throws DecodeError', () => {
     const [def] = extractEventDefs('usdc', ADDR, TRANSFER_ABI as unknown as unknown[]);
     const bad = { ...makeLog(), data: '0x01' as const };
     expect(() => decodeLogToRow(def!, bad, new Date())).toThrow(DecodeError);

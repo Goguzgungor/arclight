@@ -1,5 +1,6 @@
-// Gerçek worker process'ini spawn edip üretim gözlem yüzeyinden (healthz +
-// metrics) okuyan yardımcılar. Worker koduna dokunulmaz — bench ilkesi.
+// Helpers that spawn the real worker process and read from its production
+// observability surface (healthz + metrics). Worker code is never touched — a
+// bench principle.
 import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,8 +13,8 @@ export interface WorkerHandle {
   port: number;
 }
 
-// yardımcı dosyaları (ABI vb.) geçici dizine yazar, dizin yolunu config
-// kurucusuna verir, config.json'ı yazıp yolunu döner
+// writes helper files (ABI etc.) to a temp directory, passes the directory
+// path to the config builder, writes config.json and returns its path
 export function writeWorkerFiles(
   name: string,
   files: Record<string, unknown>,
@@ -51,13 +52,13 @@ export interface Healthz {
 export async function healthz(port: number): Promise<Healthz | null> {
   try {
     const r = await fetch(`http://127.0.0.1:${port}/healthz`, { signal: AbortSignal.timeout(2000) });
-    return (await r.json()) as Healthz; // 503 de gövde döner (Degraded)
+    return (await r.json()) as Healthz; // a 503 also returns a body (Degraded)
   } catch {
     return null;
   }
 }
 
-// prometheus text formatından tek serinin değerini okur (label'lardan bağımsız)
+// reads a single series' value from the prometheus text format (regardless of labels)
 export async function metricValue(port: number, name: string): Promise<number | null> {
   try {
     const r = await fetch(`http://127.0.0.1:${port}/metrics`, { signal: AbortSignal.timeout(2000) });
@@ -86,7 +87,7 @@ export async function waitFor(
     if (await cond()) return;
     await new Promise((r) => setTimeout(r, everyMs));
   }
-  throw new Error(`zaman aşımı (${timeoutMs}ms): ${what}`);
+  throw new Error(`timed out (${timeoutMs}ms): ${what}`);
 }
 
 export async function stopWorker(h: WorkerHandle): Promise<void> {

@@ -9,14 +9,15 @@ export interface NewHeadsSubscription {
   close(): void;
 }
 
-// Tüm ws uçlarına PARALEL newHeads aboneliği (fan-in): birincil (listedeki ilk)
-// uç sıcak yol hedefini besler, diğerleri uyandırma ve yedeklilik sağlar. Her
-// bağlantı kendi backoff'uyla aynı uca yeniden bağlanır. Ham WebSocket
-// kullanılır çünkü viem transport'u bağlantı durumunu dışarı vermiyor.
+// PARALLEL newHeads subscription to all ws endpoints (fan-in): the primary
+// (first in the list) endpoint feeds the hot-path target, the others provide
+// wake-ups and redundancy. Each connection reconnects to the same endpoint
+// with its own backoff. A raw WebSocket is used because the viem transport
+// does not expose connection state.
 export function subscribeNewHeads(opts: {
   wsUrls: string[];
   onHead: (head: HeadPayload | null, primary: boolean) => void;
-  onStateChange: (connected: boolean) => void; // en az bir uç bağlı mı
+  onStateChange: (connected: boolean) => void; // is at least one endpoint connected
   log: Logger;
 }): NewHeadsSubscription {
   let closed = false;
@@ -51,7 +52,7 @@ export function subscribeNewHeads(opts: {
       if (msg.id === 1) {
         attempt = 0;
         setConn(idx, true);
-        opts.log.info({ url }, 'newHeads aboneliği açıldı');
+        opts.log.info({ url }, 'newHeads subscription opened');
       } else if (msg.method === 'eth_subscription') {
         const r = msg.params?.result;
         const head: HeadPayload | null =
@@ -66,7 +67,7 @@ export function subscribeNewHeads(opts: {
       if (closed) return;
       setConn(idx, false);
       const delayMs = Math.min(1_000 * 2 ** attempt, 30_000);
-      opts.log.warn({ url, delayMs }, 'WS koptu — yeniden bağlanılacak');
+      opts.log.warn({ url, delayMs }, 'WS dropped — reconnecting');
       const t = setTimeout(() => {
         timers.delete(t);
         connect(idx, attempt + 1);
@@ -74,7 +75,7 @@ export function subscribeNewHeads(opts: {
       timers.add(t);
     };
     sock.onerror = () => {
-      // hata her zaman close ile izlenir; reconnect'i onclose yönetir
+      // an error is always followed by close; onclose handles the reconnect
     };
   };
 

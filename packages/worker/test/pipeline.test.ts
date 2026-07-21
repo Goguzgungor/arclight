@@ -16,7 +16,7 @@ import { HeadSignal } from '../src/signal.js';
 import { PhaseTracker } from '../src/status.js';
 import { startAnvil, type AnvilHandle } from './helpers/anvil.js';
 
-// anvil'in 0 numaralı well-known hesabı
+// anvil's well-known account #0
 const PK = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
 const FIXTURE = fileURLToPath(new URL('./fixtures/emitter', import.meta.url));
 
@@ -50,7 +50,7 @@ describe('pipeline', () => {
     });
     const receipt = await wallet.waitForTransactionReceipt({ hash });
     contractAddress = receipt.contractAddress!;
-    // 5 ping → 5 ayrı blokta 5 event
+    // 5 pings → 5 events across 5 separate blocks
     for (let i = 1; i <= 5; i++) {
       const txHash = await wallet.writeContract({
         address: contractAddress, abi: artifact.abi as never,
@@ -85,21 +85,21 @@ describe('pipeline', () => {
     anvil.stop();
   });
 
-  it('batchBlocks=2 ile yetişene kadar aralık aralık işler, 5 event yazar', async () => {
-    while (await runOnce(deps)) { /* yetişene kadar */ }
+  it('with batchBlocks=2, processes range by range until caught up, writes 5 events', async () => {
+    while (await runOnce(deps)) { /* until caught up */ }
     const r = await pool.query(`SELECT n, who FROM idx_demo.emitter_ping ORDER BY n`);
     expect(r.rows).toHaveLength(5);
     expect(r.rows.map((x) => x.n)).toEqual(['1', '2', '3', '4', '5']);
     expect(deps.phase.phase).toBe('Live');
   });
 
-  it('idempotent: tekrar çalıştırmak yeni satır üretmez', async () => {
+  it('idempotent: re-running produces no new rows', async () => {
     await runOnce(deps);
     const r = await pool.query(`SELECT count(*)::int AS c FROM idx_demo.emitter_ping`);
     expect(r.rows[0].c).toBe(5);
   });
 
-  it("restart simülasyonu: yeni pipeline instance cursor'dan devam eder, gap/duplikasyon yok", async () => {
+  it('restart simulation: a fresh pipeline instance resumes from the cursor, no gaps/duplicates', async () => {
     const artifact = loadArtifact();
     const wallet = createWalletClient({
       account: privateKeyToAccount(PK), transport: http(anvil.url),
@@ -111,10 +111,10 @@ describe('pipeline', () => {
       });
       await wallet.waitForTransactionReceipt({ hash: txHash });
     }
-    // "çökme": eski deps atılır; aynı DB'yle sıfırdan kurulan instance devam eder
+    // "crash": old deps are discarded; an instance built from scratch on the same DB resumes
     const fresh: PipelineDeps = { ...deps, phase: new PhaseTracker(), metrics: createMetrics('demo2') };
-    await bootstrapIndexer(fresh); // idempotent — cursor'a dokunmaz
-    while (await runOnce(fresh)) { /* yetiş */ }
+    await bootstrapIndexer(fresh); // idempotent — does not touch the cursor
+    while (await runOnce(fresh)) { /* catch up */ }
     const r = await pool.query(`SELECT count(*)::int AS c, max(n) AS m FROM idx_demo.emitter_ping`);
     expect(r.rows[0].c).toBe(8);
     expect(r.rows[0].m).toBe('8');
@@ -122,7 +122,7 @@ describe('pipeline', () => {
     expect(cursor).toBeGreaterThanOrEqual(8n);
   });
 
-  it('runLoop: boştayken headSignal.notify() intervalMs beklemeden yeni tur başlatır', async () => {
+  it('runLoop: while idle, headSignal.notify() starts a new round without waiting intervalMs', async () => {
     const headSignal = new HeadSignal();
     const localDeps: PipelineDeps = {
       ...deps,
@@ -133,9 +133,9 @@ describe('pipeline', () => {
     };
     const ctrl = new AbortController();
     const loop = runLoop(localDeps, ctrl.signal);
-    await new Promise((r) => setTimeout(r, 500)); // yetişip boşa düşsün
+    await new Promise((r) => setTimeout(r, 500)); // let it catch up and go idle
 
-    // 9. event'i üret ve sinyal ver — intervalMs (60 sn) dolmadan işlenmeli
+    // Produce the 9th event and signal — it must be processed before intervalMs (60 s) elapses
     const artifact = loadArtifact();
     const wallet = createWalletClient({
       account: privateKeyToAccount(PK), transport: http(anvil.url),
@@ -160,12 +160,12 @@ describe('pipeline', () => {
     expect(count).toBe(9);
   });
 
-  it("sıcak yol: 'latest' modunda hedef birincil sinyalden gelir (guard'ın gördüğü head değil)", async () => {
+  it("hot path: in 'latest' mode the target comes from the primary signal (not the head the guard sees)", async () => {
     const { HeadSignal: HS } = await import('../src/signal.js');
     const hs = new HS();
     const calls = { getBlock: 0 };
     const fake = {
-      // guard çağrısı: sorgu node'u 5'te — ama hedef sinyaldeki 3 olmalı
+      // guard call: the query node is at 5 — but the target must be 3 from the signal
       getBlock: async () => {
         calls.getBlock += 1;
         return { number: 5n };
@@ -185,15 +185,15 @@ describe('pipeline', () => {
     await bootstrapIndexer(d2);
     hs.notify({ number: 3n, timestamp: new Date() }, true);
     expect(await runOnce(d2)).toBe(true);
-    expect(calls.getBlock).toBe(1); // yalnız paralel tamlık guard'ı
-    expect(await getCursor(pool, 'idx_hot')).toBe(3n); // 5 değil — hedef sinyalden
+    expect(calls.getBlock).toBe(1); // only the parallel completeness guard
+    expect(await getCursor(pool, 'idx_hot')).toBe(3n); // not 5 — target comes from the signal
   });
 
-  it('tamlık guard\'ı: sorgu node\'u sinyalin gerisindeyse cursor clamp\'lenir', async () => {
+  it('completeness guard: cursor is clamped when the query node lags behind the signal', async () => {
     const { HeadSignal: HS } = await import('../src/signal.js');
     const hs = new HS();
     const fake = {
-      getBlock: async () => ({ number: 2n }), // node 2'de, sinyal 5 diyor
+      getBlock: async () => ({ number: 2n }), // node is at 2, signal says 5
       getLogs: async () => [],
     } as unknown as PipelineDeps['client'];
     const cfg2 = parseWorkerConfig({
@@ -209,12 +209,12 @@ describe('pipeline', () => {
     await bootstrapIndexer(d2);
     hs.notify({ number: 5n, timestamp: new Date() }, true);
     expect(await runOnce(d2)).toBe(true);
-    expect(await getCursor(pool, 'idx_clamp')).toBe(2n); // görmediği aralık commit edilmez
+    expect(await getCursor(pool, 'idx_clamp')).toBe(2n); // unseen range is not committed
   });
 
-  it('getBlockTimes: önbellekteki bloklar için RPC çağrısı yapılmaz', async () => {
+  it('getBlockTimes: no RPC call is made for cached blocks', async () => {
     const client = {
-      getBlock: async () => { throw new Error('önbellek varken çağrılmamalı'); },
+      getBlock: async () => { throw new Error('must not be called when cache is populated'); },
     } as unknown as PipelineDeps['client'];
     const known = new Map([[5n, new Date(5000)]]);
     const times = await getBlockTimes(client, [5n, 5n], known);

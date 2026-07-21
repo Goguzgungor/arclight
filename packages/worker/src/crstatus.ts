@@ -66,7 +66,7 @@ export function patchCrStatus(target: CrStatusTarget, status: CrRuntimeStatus): 
     const r = req(url, opts, (res) => {
       res.resume();
       if (res.statusCode !== undefined && res.statusCode < 300) resolve();
-      else reject(new Error(`CR status patch başarısız: HTTP ${res.statusCode}`));
+      else reject(new Error(`CR status patch failed: HTTP ${res.statusCode}`));
     });
     r.on('error', reject);
     r.end(body);
@@ -86,7 +86,7 @@ export function startCrStatusLoop(
       headBlock: Number(tracker.headBlock),
       lag: Number(tracker.lag),
       ...(tracker.lastError ? { lastError: tracker.lastError } : {}),
-    }).catch((err: unknown) => log.warn({ err }, 'CR status patch başarısız'));
+    }).catch((err: unknown) => log.warn({ err }, 'CR status patch failed'));
   };
   push();
   const t = setInterval(push, intervalMs);

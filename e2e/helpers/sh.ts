@@ -23,7 +23,7 @@ export async function retry<T>(
     const value = await fn().catch(() => undefined as T);
     if (value !== undefined && ok(value)) return value;
     if (Date.now() > deadline) {
-      throw new Error(`retry zaman aşımı (${timeoutMs}ms): son değer ${JSON.stringify(value)}`);
+      throw new Error(`retry timed out (${timeoutMs}ms): last value ${JSON.stringify(value)}`);
     }
     await new Promise((r) => setTimeout(r, everyMs));
   }
