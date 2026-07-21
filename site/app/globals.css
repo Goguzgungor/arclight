@@ -1087,3 +1087,60 @@ li code {
     transition: none;
   }
 }
+
+/* ———— benchmarks ———— */
+.bench-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 34px;
+}
+
+.bench-tile {
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  border-radius: 12px;
+  padding: 22px;
+}
+
+.bench-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent2);
+  margin-bottom: 10px;
+}
+
+.bench-value {
+  font-size: 34px;
+  font-weight: 700;
+  font-stretch: 112%;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 8px;
+}
+
+.bench-tile p {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--body2);
+}
+
+.bench-note {
+  margin-top: 24px;
+  border-left: 3px solid var(--accent);
+  padding: 4px 0 4px 18px;
+  max-width: 72ch;
+  color: var(--body2);
+}
+
+.bench-note a {
+  color: var(--accent2);
+}
+
+@media (max-width: 780px) {
+  .bench-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -26,6 +26,7 @@ export default function Page() {
           <div className="nav-links">
             <a href="#how">How it works</a>
             <a href="#reliability">Reliability</a>
+            <a href="#benchmarks">Benchmarks</a>
             <a href="#compare">Compare</a>
             <ThemeToggle />
             <a className="nav-cta" href="#cta">
@@ -247,10 +248,65 @@ export default function Page() {
         </div>
       </section>
 
-      {/* ———— 03 compare ———— */}
+      {/* ———— 03 benchmarks ———— */}
+      <section id="benchmarks" className="section">
+        <div className="wrap">
+          <SecHead n="03" label="Benchmarks" />
+          <h2>Measured, not promised.</h2>
+          <p className="lede">
+            Every number comes from running the real worker against the public
+            Arc testnet and reading only its production surface — Postgres rows
+            and <code>/metrics</code>. Reproduce it with <code>pnpm bench</code>.
+          </p>
+
+          <div className="bench-grid">
+            <div className="bench-tile">
+              <div className="bench-label">block → SQL, p50</div>
+              <div className="bench-value">1.27s</div>
+              <p>
+                Block close to queryable row on Arc testnet — live USDC traffic,
+                WebSocket <code>newHeads</code> listening, not polling. p90
+                2.06s.
+              </p>
+            </div>
+            <div className="bench-tile">
+              <div className="bench-label">backfill catch-up</div>
+              <div className="bench-value">14.8 blocks/s</div>
+              <p>
+                5,489 blocks of real USDC history — ~70 minutes of chain time —
+                caught up in 370 seconds over a public RPC. Zero RPC errors.
+              </p>
+            </div>
+            <div className="bench-tile">
+              <div className="bench-label">burst ingest</div>
+              <div className="bench-value">2,628 events/s</div>
+              <p>
+                The decode + transactional-SQL write ceiling, measured with WAN
+                latency out of the picture.
+              </p>
+            </div>
+          </div>
+
+          <p className="bench-note">
+            The budget is published too: the RPC&apos;s own{" "}
+            <code>newHeads</code> subscription first announces a block ~0.85s
+            after its validator timestamp — that floor belongs to the provider.
+            Arckive adds only ~0.4s on top: the head signal triggers one{" "}
+            <code>eth_getLogs</code> round-trip and the SQL write. Full
+            methodology and raw results:{" "}
+            <a href="/benchmarks.html">benchmark report</a> ·{" "}
+            <a href="https://github.com/Goguzgungor/arclight/tree/main/docs/benchmarks">
+              docs/benchmarks
+            </a>
+            .
+          </p>
+        </div>
+      </section>
+
+      {/* ———— 04 compare ———— */}
       <section id="compare" className="section">
         <div className="wrap">
-          <SecHead n="03" label="Compare" />
+          <SecHead n="04" label="Compare" />
           <h2>A specific combination nobody else offers.</h2>
 
           <div className="compare-scroll">
