@@ -1,0 +1,278 @@
+# Arckive (arclight) kurulumu — scripts/build-install.sh üretir, elle düzenlemeyin.
+# kubectl apply -f https://arckive.org/install.yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arclight-system
+  labels:
+    app.kubernetes.io/name: arclight-operator
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: indexers.arclight.dev
+spec:
+  group: arclight.dev
+  names:
+    kind: Indexer
+    listKind: IndexerList
+    plural: indexers
+    singular: indexer
+    shortNames: [idx]
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Current
+          type: integer
+          jsonPath: .status.currentBlock
+        - name: Head
+          type: integer
+          jsonPath: .status.headBlock
+        - name: Lag
+          type: integer
+          jsonPath: .status.lag
+      schema:
+        openAPIV3Schema:
+          type: object
+          required: [spec]
+          properties:
+            spec:
+              type: object
+              required: [network, storage, contracts]
+              properties:
+                network:
+                  type: object
+                  required: [chainId, rpc]
+                  properties:
+                    chainId:
+                      type: integer
+                      minimum: 1
+                    rpc:
+                      type: array
+                      minItems: 1
+                      items:
+                        type: string
+                        pattern: '^(https?|wss?)://'
+                        description: "http(s):// polling/okuma; ws(s):// newHeads aboneliği + okuma"
+                    finalityTag:
+                      type: string
+                      enum: [finalized, safe, latest]
+                      default: finalized
+                storage:
+                  type: object
+                  required: [mode, external]
+                  properties:
+                    mode:
+                      type: string
+                      enum: [External]
+                    external:
+                      type: object
+                      required: [dsnSecretRef]
+                      properties:
+                        dsnSecretRef:
+                          type: object
+                          required: [name]
+                          properties:
+                            name:
+                              type: string
+                            key:
+                              type: string
+                              default: url
+                contracts:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [name, address, abi]
+                    properties:
+                      name:
+                        type: string
+                        pattern: "^[a-z][a-z0-9-]{0,29}$"
+                      address:
+                        type: string
+                        pattern: "^0x[0-9a-fA-F]{40}$"
+                      abi:
+                        type: object
+                        required: [configMapRef]
+                        properties:
+                          configMapRef:
+                            type: object
+                            required: [name]
+                            properties:
+                              name:
+                                type: string
+                              key:
+                                type: string
+                                default: abi.json
+                      startBlock:
+                        type: integer
+                        minimum: 0
+                        default: 0
+                      events:
+                        type: array
+                        items:
+                          type: string
+                polling:
+                  type: object
+                  properties:
+                    batchBlocks:
+                      type: integer
+                      minimum: 1
+                      default: 1000
+                    intervalMs:
+                      type: integer
+                      minimum: 1
+                      default: 2000
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum: [Provisioning, Backfilling, Live, Degraded]
+                currentBlock:
+                  type: integer
+                headBlock:
+                  type: integer
+                lag:
+                  type: integer
+                lastError:
+                  type: string
+                observedGeneration:
+                  type: integer
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    required: [type, status, reason, lastTransitionTime]
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      reason:
+                        type: string
+                      message:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+---
+# Source: arclight/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: arclight-operator
+  namespace: arclight-system
+  labels:
+    app.kubernetes.io/name: arclight-operator
+    app.kubernetes.io/instance: arclight
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: arclight/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: arclight-operator
+  labels:
+    app.kubernetes.io/name: arclight-operator
+    app.kubernetes.io/instance: arclight
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups: [arclight.dev]
+    resources: [indexers]
+    verbs: [get, list, watch]
+  - apiGroups: [arclight.dev]
+    resources: [indexers/status]
+    verbs: [patch]
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [get, list, watch, create, patch]
+  - apiGroups: [""]
+    resources: [configmaps, serviceaccounts]
+    verbs: [get, list, watch, create, patch]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get]
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [roles, rolebindings]
+    verbs: [get, list, watch, create, patch]
+---
+# Source: arclight/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: arclight-operator
+  labels:
+    app.kubernetes.io/name: arclight-operator
+    app.kubernetes.io/instance: arclight
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: arclight-operator
+subjects:
+  - kind: ServiceAccount
+    name: arclight-operator
+    namespace: arclight-system
+---
+# Source: arclight/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arclight-operator
+  namespace: arclight-system
+  labels:
+    app.kubernetes.io/name: arclight-operator
+    app.kubernetes.io/instance: arclight
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: arclight-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: arclight-operator
+        app.kubernetes.io/instance: arclight
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      serviceAccountName: arclight-operator
+      containers:
+        - name: operator
+          image: "ghcr.io/goguzgungor/arclight-operator:latest"
+          imagePullPolicy: Always
+          env:
+            - name: WORKER_IMAGE
+              value: "ghcr.io/goguzgungor/arclight-worker:latest"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: RESYNC_INTERVAL_MS
+              value: "300000"
+          ports:
+            - containerPort: 8080
+              name: health
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi

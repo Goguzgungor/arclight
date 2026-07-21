@@ -21,9 +21,7 @@ Arc RPC'ler ──WS newHeads + poll fallback──▶ [ Worker ] ──tek tx�
 
 ```bash
 # 1) Operatörü kur (CRD dahil)
-helm install arclight charts/arclight \
-  --set image.repository=<registry>/arclight-operator --set image.tag=<tag> \
-  --set workerImage.repository=<registry>/arclight-worker --set workerImage.tag=<tag>
+kubectl apply -f https://arckive.org/install.yaml
 
 # 2) DSN Secret + ABI ConfigMap + Indexer CR
 kubectl create secret generic pg-dsn --from-literal=url='postgres://user:pass@host:5432/db'
@@ -35,6 +33,12 @@ kubectl get indexers
 # NAME       PHASE   CURRENT   HEAD      LAG
 # usdc-arc   Live    8123456   8123456   0
 ```
+
+`install.yaml`, chart'tan `scripts/build-install.sh` ile üretilir (Namespace +
+CRD + operatör; imajlar `ghcr.io/goguzgungor/arclight-{operator,worker}:latest`)
+ve her `main` push'unda GitHub Release'e yayınlanır. Kendi imajlarınla kurmak
+istersen Helm yolu hâlâ geçerli: `helm install arclight charts/arclight
+--set image.repository=... --set workerImage.repository=...`
 
 `rpc` listesine bir `wss://` ucu eklersen worker yeni bloğu `eth_subscribe(newHeads)`
 ile anında görür; yoksa `polling.intervalMs` aralığıyla poll eder (WS varken de
