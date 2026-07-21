@@ -292,9 +292,8 @@ export default function Page() {
             from the <code>newHeads</code> payload and one parallel{" "}
             <code>eth_getLogs</code> round-trip later the row is committed —
             the engine itself adds ~40ms; the rest of the latency belongs to
-            how fast the RPC announces blocks. On a mature mainnet (Base, USDC)
-            the same worker measured a 189ms median block-to-SQL. Full
-            methodology and raw results:{" "}
+            how fast the RPC announces blocks — and it shrinks further with a
+            cluster-local Arc node. Full methodology and raw results:{" "}
             <a href="/benchmarks.html">benchmark report</a> ·{" "}
             <a href="https://github.com/Goguzgungor/arclight/tree/main/docs/benchmarks">
               docs/benchmarks
