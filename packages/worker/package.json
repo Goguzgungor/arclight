@@ -6,7 +6,9 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "demo:seed": "node --experimental-strip-types scripts/demo-seed.ts",
-    "arc:preflight": "node --experimental-strip-types scripts/arc-preflight.ts"
+    "arc:preflight": "node --experimental-strip-types scripts/arc-preflight.ts",
+    "bench": "node --experimental-strip-types scripts/bench/run.ts",
+    "bench:report": "node --experimental-strip-types scripts/bench/report.ts"
   },
   "dependencies": {
     "@arclight/core": "workspace:*",
