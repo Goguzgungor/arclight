@@ -6,7 +6,7 @@ import { rpcHead, usdcAbi } from './freshness.ts';
 import { rate } from './stats.ts';
 
 const ARC_CHAIN_ID = 5042002;
-const ARC_HTTP = 'https://rpc.testnet.arc.network';
+const ARC_HTTP = 'https://arc-testnet.drpc.org'; // resmi uç sorguda rate-limit'li (-32011)
 const ARC_USDC = '0x3600000000000000000000000000000000000000';
 import { healthz, metricValue, spawnWorker, stopWorker, waitFor, writeWorkerFiles } from './worker-proc.ts';
 

@@ -14,16 +14,15 @@ const ROOT = resolve(import.meta.dirname, '../../../..');
 export const NETWORKS = {
   'arc-testnet': {
     chainId: 5042002,
-    // birincil ws = resmi uç (ölçümde her blokta ilk duyuran); drpc yedeklilik
-    rpc: [
-      'wss://rpc.testnet.arc.network',
-      'wss://arc-testnet.drpc.org',
-      'https://rpc.testnet.arc.network',
-    ],
+    // resmi uç duyuruda en hızlı ama sorguda sıkı rate-limit'li (-32011):
+    // yalnız announceRpc'de dinler; sorgular drpc'ye gider
+    announceRpc: ['wss://rpc.testnet.arc.network'],
+    rpc: ['wss://arc-testnet.drpc.org', 'https://arc-testnet.drpc.org'],
     usdc: '0x3600000000000000000000000000000000000000',
   },
   'base-mainnet': {
     chainId: 8453,
+    announceRpc: [] as string[],
     rpc: [
       'wss://base-rpc.publicnode.com',
       'wss://base.drpc.org',
@@ -36,7 +35,9 @@ export const NETWORKS = {
 export type FreshNetwork = keyof typeof NETWORKS;
 export const FRESH_NETWORK = (process.env['BENCH_FRESH_NETWORK'] ?? 'arc-testnet') as FreshNetwork;
 if (!(FRESH_NETWORK in NETWORKS)) throw new Error(`bilinmeyen ağ: ${FRESH_NETWORK}`);
-export const PRIMARY_WS = NETWORKS[FRESH_NETWORK].rpc[0];
+export const PRIMARY_WS =
+  NETWORKS[FRESH_NETWORK].announceRpc[0] ??
+  NETWORKS[FRESH_NETWORK].rpc.find((u) => u.startsWith('ws'))!;
 
 const PORT = 9301;
 const SAMPLES = Number(process.env['BENCH_FRESH_SAMPLES'] ?? 40);
@@ -83,7 +84,9 @@ export async function run(databaseUrl: string): Promise<FreshnessResult> {
 
   const configPath = writeWorkerFiles('fresh', { 'usdc-abi.json': usdcAbi() }, (dir) => ({
     indexerName: 'bench-fresh',
-    network: { chainId: net.chainId, rpc: net.rpc, finalityTag: 'latest' },
+    network: {
+      chainId: net.chainId, rpc: net.rpc, announceRpc: net.announceRpc, finalityTag: 'latest',
+    },
     contracts: [
       { name: 'usdc', address: net.usdc, abiPath: `${dir}/usdc-abi.json`, startBlock: head, events: ['Transfer'] },
     ],
