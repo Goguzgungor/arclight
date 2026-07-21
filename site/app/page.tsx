@@ -262,19 +262,19 @@ export default function Page() {
           <div className="bench-grid">
             <div className="bench-tile">
               <div className="bench-label">block → SQL, p50</div>
-              <div className="bench-value">1.27s</div>
+              <div className="bench-value">0.40s</div>
               <p>
                 Block close to queryable row on Arc testnet — live USDC traffic,
-                WebSocket <code>newHeads</code> listening, not polling. p90
-                2.06s.
+                WebSocket <code>newHeads</code> listening, not polling. Even p99
+                stays under a second (0.97s).
               </p>
             </div>
             <div className="bench-tile">
               <div className="bench-label">backfill catch-up</div>
-              <div className="bench-value">14.8 blocks/s</div>
+              <div className="bench-value">92.6 blocks/s</div>
               <p>
-                5,489 blocks of real USDC history — ~70 minutes of chain time —
-                caught up in 370 seconds over a public RPC. Zero RPC errors.
+                5,107 blocks of real USDC history caught up in 55 seconds over a
+                public RPC — ~48× faster than the chain. Zero RPC errors.
               </p>
             </div>
             <div className="bench-tile">
@@ -288,11 +288,12 @@ export default function Page() {
           </div>
 
           <p className="bench-note">
-            The budget is published too: the RPC&apos;s own{" "}
-            <code>newHeads</code> subscription first announces a block ~0.85s
-            after its validator timestamp — that floor belongs to the provider.
-            Arckive adds only ~0.4s on top: the head signal triggers one{" "}
-            <code>eth_getLogs</code> round-trip and the SQL write. Full
+            The budget is published too: the head signal is consumed straight
+            from the <code>newHeads</code> payload and one parallel{" "}
+            <code>eth_getLogs</code> round-trip later the row is committed —
+            the engine itself adds ~40ms; the rest of the latency belongs to
+            how fast the RPC announces blocks. On a mature mainnet (Base, USDC)
+            the same worker measured a 189ms median block-to-SQL. Full
             methodology and raw results:{" "}
             <a href="/benchmarks.html">benchmark report</a> ·{" "}
             <a href="https://github.com/Goguzgungor/arclight/tree/main/docs/benchmarks">
