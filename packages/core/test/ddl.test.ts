@@ -60,6 +60,29 @@ describe('buildEventTable', () => {
     expect(create).toContain('UNIQUE (block_number, tx_hash, log_index)');
     expect(spec.statements.filter((s) => s.startsWith('CREATE INDEX'))).toHaveLength(2);
   });
+
+  it('_ingested_at meta kolonu: CREATE içinde + mevcut tablolar için ALTER', () => {
+    const [def] = extractEventDefs('usdc', ADDR, TRANSFER_ABI);
+    const spec = buildEventTable('idx_demo', def!);
+    expect(spec.statements[0]).toContain('"_ingested_at" timestamptz NOT NULL DEFAULT now()');
+    const alter = spec.statements.find((s) => s.startsWith('ALTER TABLE'));
+    expect(alter).toContain(
+      'ADD COLUMN IF NOT EXISTS "_ingested_at" timestamptz NOT NULL DEFAULT now()',
+    );
+  });
+
+  it('_ingestedAt adlı event parametresi meta kolonla çakışmaz (ingested_at olur)', () => {
+    const abi = [
+      {
+        type: 'event',
+        name: 'Weird',
+        inputs: [{ name: '_ingestedAt', type: 'uint256', indexed: false }],
+      },
+    ];
+    const [def] = extractEventDefs('x', ADDR, abi);
+    // toSnakeCase baştaki _ soyar; sonuç DB meta kolonu "_ingested_at" ile farklı
+    expect(eventColumns(def!.event).map((c) => c.name)).toEqual(['ingested_at']);
+  });
 });
 
 describe('buildControlTables', () => {

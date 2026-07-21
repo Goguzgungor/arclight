@@ -3,14 +3,18 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.12.1",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "eslint .",
     "demo:seed": "pnpm --filter @arclight/worker demo:seed",
     "e2e": "pnpm --filter @arclight/e2e test:e2e",
-    "arc:preflight": "pnpm --filter @arclight/worker arc:preflight"
+    "arc:preflight": "pnpm --filter @arclight/worker arc:preflight",
+    "bench": "pnpm --filter @arclight/worker bench",
+    "bench:report": "pnpm --filter @arclight/worker bench:report"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

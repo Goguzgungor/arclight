@@ -14,7 +14,10 @@ export const COMMON_COLUMNS: ReadonlyArray<readonly [string, string]> = [
   ['contract_address', 'text NOT NULL'],
 ];
 
-const RESERVED = new Set(COMMON_COLUMNS.map(([n]) => n));
+// _ingested_at DB tarafından doldurulur (DEFAULT now()); decode üretmez,
+// bu yüzden COMMON_COLUMNS'ta değil ama ad çakışması için rezervedir.
+export const INGESTED_AT = '_ingested_at';
+const RESERVED = new Set([...COMMON_COLUMNS.map(([n]) => n), INGESTED_AT]);
 const q = (id: string) => `"${id}"`;
 
 export function pgTypeFor(abiType: string): string {
@@ -55,11 +58,15 @@ export function buildEventTable(schema: string, def: EventDef): TableSpec {
   const cols = eventColumns(def.event);
   const lines = [
     ...COMMON_COLUMNS.map(([n, t]) => `${q(n)} ${t}`),
+    `${q(INGESTED_AT)} timestamptz NOT NULL DEFAULT now()`,
     ...cols.map((c) => `${q(c.name)} ${pgTypeFor(c.abiType)}`),
     'UNIQUE (block_number, tx_hash, log_index)',
   ];
   const statements = [
     `CREATE TABLE IF NOT EXISTS ${q(schema)}.${q(def.tableName)} (\n  ${lines.join(',\n  ')}\n)`,
+    // eski kurulumlar için idempotent migrasyon (eski satırlar migrasyon anını taşır)
+    `ALTER TABLE ${q(schema)}.${q(def.tableName)} ` +
+      `ADD COLUMN IF NOT EXISTS ${q(INGESTED_AT)} timestamptz NOT NULL DEFAULT now()`,
     ...cols
       .filter((c) => c.indexed)
       .map(

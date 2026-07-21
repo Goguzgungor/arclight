@@ -8,7 +8,7 @@
   "contracts": [
     {
       "name": "usdc",
-      "address": "<USDC_ADDRESS>",
+      "address": "0x3600000000000000000000000000000000000000",
       "abiPath": "/etc/arclight/usdc-abi.json",
       "startBlock": 0,
       "events": ["Transfer", "Approval"]

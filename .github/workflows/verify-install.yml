@@ -1,0 +1,16 @@
+name: verify-install
+on: workflow_dispatch
+
+jobs:
+  kind-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: install-verify
+      - name: arckive.org/install.yaml uygula
+        run: kubectl apply -f https://arckive.org/install.yaml
+      - name: operatör Ready olur
+        run: kubectl -n arclight-system rollout status deploy/arclight-operator --timeout=180s
+      - name: CRD sunuluyor
+        run: kubectl get indexers -A
