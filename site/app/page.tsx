@@ -262,7 +262,7 @@ export default function Page() {
           <div className="bench-grid">
             <div className="bench-tile">
               <div className="bench-label">block → SQL, p50</div>
-              <div className="bench-value">0.40s</div>
+              <div className="bench-value">395ms</div>
               <p>
                 Block close to queryable row on Arc testnet — live USDC traffic,
                 WebSocket <code>newHeads</code> listening, not polling. Even p99
