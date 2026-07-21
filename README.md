@@ -56,14 +56,15 @@ Sayılar gerçek worker'ı koşturup yalnızca üretim yüzeyinden (Postgres sat
 
 | Ölçüm | Sonuç | Bağlam |
 |---|---|---|
-| Blok → SQL, p50 | **1.27s** | Arc public testnet USDC, WS `newHeads` dinleme modu (p90 2.06s) |
-| Backfill | **14.8 blok/s** | 5.489 blok gerçek USDC geçmişi (~70 dk zincir zamanı) 370 sn'de — zincirden ~11× hızlı |
+| Blok → SQL, p50 | **0.40s** (p99 0.97s) | Arc public testnet USDC, WS `newHeads` dinleme; resmi uç `announceRpc`'de, sorgular drpc'de |
+| Backfill | **92.6 blok/s** | 5.107 blok gerçek USDC geçmişi 55 sn'de — zincirden ~48× hızlı, 0 RPC hatası |
 | Burst ingest | **2.628 event/s** | Lokal anvil, decode + tek-tx SQL yazma tavanı |
-| Sağlayıcı tabanı | 0.85s (p50) | RPC'nin `newHeads` duyuru gecikmesi — bütçenin indexer dışı kısmı |
+| Sağlayıcı tabanı | ~0.75–0.9s (p50) | Resmi ucun `newHeads` duyuru gecikmesi — bütçenin indexer dışı kısmı (motorun kendi payı ~40ms) |
 
 Tazelik `_ingested_at − block_time` meta kolonlarından okunur; WS bağlantısı
-pencere boyunca açık kalmazsa koşu geçersiz sayılır. Ham sonuçlar ve HTML
-rapor: `docs/benchmarks/` · yeniden üretmek için: `pnpm bench`
+pencere boyunca açık kalmazsa koşu geçersiz sayılır. Arc mainnet çıktığında
+aynı suite `NETWORKS`'e eklenecek tek kayıtla orada koşar. Ham sonuçlar ve
+HTML rapor: `docs/benchmarks/` · yeniden üretmek için: `pnpm bench`
 (önkoşul: `docker compose -f docker-compose.dev.yml up -d postgres anvil`).
 
 ## Gözlemlenebilirlik

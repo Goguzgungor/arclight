@@ -22,6 +22,11 @@ export const WorkerConfigSchema = z.object({
   network: z.object({
     chainId: z.number().int().positive(),
     rpc: z.array(RpcUrlSchema).min(1),
+    // yalnızca newHeads dinlemek için ek ws uçları (sorgu havuzuna girmez):
+    // duyuruda hızlı ama sorguda kısıtlı uçlar (ör. resmi uç) için
+    announceRpc: z
+      .array(z.string().regex(/^wss?:\/\//i, 'announceRpc yalnızca ws(s):// olabilir'))
+      .default([]),
     finalityTag: z.enum(['finalized', 'safe', 'latest']).default('finalized'),
   }),
   contracts: z.array(ContractConfigSchema).min(1),

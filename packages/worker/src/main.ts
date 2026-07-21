@@ -56,20 +56,23 @@ async function main(): Promise<void> {
   await bootstrapIndexer(deps);
 
   // ws ucu varsa newHeads aboneliği pipeline'ı anında uyandırır;
-  // polling intervalMs güvenlik ağı olarak kalır
+  // polling intervalMs güvenlik ağı olarak kalır. announceRpc uçları yalnız
+  // dinler (sorgu havuzuna girmez) ve listenin başında oldukları için
+  // birincil sinyal kaynağıdır.
   const { ws: wsUrls } = splitRpcUrls(rpcs);
-  const subscription = wsUrls.length
+  const announceUrls = [...new Set([...cfg.network.announceRpc, ...wsUrls])];
+  const subscription = announceUrls.length
     ? subscribeNewHeads({
-        wsUrls,
-        onHead: () => {
+        wsUrls: announceUrls,
+        onHead: (head, primary) => {
           metrics.headNotifications.inc();
-          headSignal.notify();
+          headSignal.notify(head ?? undefined, primary);
         },
         onStateChange: (connected) => metrics.wsConnected.set(connected ? 1 : 0),
         log,
       })
     : null;
-  if (!wsUrls.length) log.info('ws RPC ucu yok — salt polling modu');
+  if (!announceUrls.length) log.info('ws RPC ucu yok — salt polling modu');
   let crTarget: CrStatusTarget | null = null;
   try {
     crTarget = crStatusTargetFromEnv();

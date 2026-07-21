@@ -1,7 +1,7 @@
 // Sağlayıcı tabanı: RPC'nin WS newHeads aboneliği bir bloğu, validator
 // damgasından ne kadar sonra duyuruyor? (now - block.timestamp). Bu taban
 // hiçbir indexer'ın kontrolünde değildir; freshness bütçesinin bağlamıdır.
-import { ARC_WS } from './freshness.ts';
+import { PRIMARY_WS } from './freshness.ts';
 import { latencyStats, type LatencyStats } from './stats.ts';
 
 const HEADS = Number(process.env['BENCH_VISIBILITY_HEADS'] ?? 30);
@@ -16,7 +16,7 @@ export interface VisibilityResult {
 export async function run(): Promise<VisibilityResult> {
   const samples = await new Promise<number[]>((resolve, reject) => {
     const out: number[] = [];
-    const ws = new WebSocket(ARC_WS);
+    const ws = new WebSocket(PRIMARY_WS);
     const fail = (msg: string): void => {
       try { ws.close(); } catch { /* kapalı */ }
       reject(new Error(msg));
@@ -35,7 +35,7 @@ export async function run(): Promise<VisibilityResult> {
         resolve(out);
       }
     };
-    ws.onerror = () => { clearTimeout(timer); fail(`ws bağlantı hatası: ${ARC_WS}`); };
+    ws.onerror = () => { clearTimeout(timer); fail(`ws bağlantı hatası: ${PRIMARY_WS}`); };
   });
-  return { kind: 'visibility', url: ARC_WS, samples, stats: latencyStats(samples) };
+  return { kind: 'visibility', url: PRIMARY_WS, samples, stats: latencyStats(samples) };
 }

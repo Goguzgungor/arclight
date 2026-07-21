@@ -35,9 +35,17 @@ export async function bootstrapIndexer(deps: PipelineDeps): Promise<void> {
 
 export async function runOnce(deps: PipelineDeps): Promise<boolean> {
   const { client, pool, cfg, defs, schema, metrics, phase } = deps;
-  const finalized = await getFinalizedBlockNumber(client, cfg.network.finalityTag);
   const cursor = await getCursor(pool, schema);
   if (cursor === null) throw new Error('cursor yok — önce bootstrapIndexer çağrılmalı');
+  // 'latest' modunda hedef, birincil WS'in duyurduğu head'den gelir: getBlock
+  // RTT'si ve duyuran-node/sorgu-node ayrışması (kaçan sinyal → intervalMs
+  // gecikmesi) ortadan kalkar. Sinyal yoksa/eskiyse RPC'ye düşülür.
+  const signalHead =
+    cfg.network.finalityTag === 'latest' ? deps.headSignal.latestPrimaryHead() : null;
+  const finalized =
+    signalHead && signalHead.number > cursor
+      ? signalHead.number
+      : await getFinalizedBlockNumber(client, cfg.network.finalityTag);
   metrics.blocksBehind.set(Number(finalized - cursor));
   phase.setBlocks(cursor, finalized);
 
@@ -52,8 +60,29 @@ export async function runOnce(deps: PipelineDeps): Promise<boolean> {
   const startBlocks = new Map(cfg.contracts.map((c) => [c.address.toLowerCase(), BigInt(c.startBlock)]));
   const addresses = [...new Set(defs.map((d) => d.address))];
 
-  const logs = await fetchLogs(client, addresses, range.fromBlock, range.toBlock);
-  const times = await getBlockTimes(client, logs.map((l) => l.blockNumber!));
+  // Tamlık guard'ı: hedef sinyalden geldiyse sorgu node'u (LB) duyurulan
+  // bloğun gerisinde olabilir — getLogs'un sessiz-eksik cevabına güvenilmez.
+  // blockNumber guard'ı getLogs'a PARALEL gider (ek gecikme yok); node
+  // geriden geliyorsa yalnız gördüğü kısım commit edilir, kalan sonraki tura.
+  let logs;
+  let safeTo = range.toBlock;
+  if (signalHead && finalized === signalHead.number) {
+    const [fetched, queryHead] = await Promise.all([
+      fetchLogs(client, addresses, range.fromBlock, range.toBlock),
+      getFinalizedBlockNumber(client, cfg.network.finalityTag),
+    ]);
+    if (queryHead < range.fromBlock) return false; // node çok geride — tur yok
+    safeTo = queryHead < range.toBlock ? queryHead : range.toBlock;
+    logs = fetched.filter((l) => l.blockNumber! <= safeTo);
+  } else {
+    logs = await fetchLogs(client, addresses, range.fromBlock, range.toBlock);
+  }
+  // newHeads payload'ından beslenen önbellek tail modunda RTT'siz karşılar
+  const times = await getBlockTimes(
+    client,
+    logs.map((l) => l.blockNumber!),
+    deps.headSignal.blockTimes(),
+  );
 
   const rows: DecodedRow[] = [];
   const dead: DeadLetterEntry[] = [];
@@ -75,17 +104,17 @@ export async function runOnce(deps: PipelineDeps): Promise<boolean> {
   }
 
   const end = deps.metrics.writeLatency.startTimer();
-  const inserted = await commitBatch(pool, schema, rows, dead, range.toBlock);
+  const inserted = await commitBatch(pool, schema, rows, dead, safeTo);
   end();
 
   metrics.eventsIngested.inc(inserted);
   metrics.deadLetters.inc(dead.length);
-  metrics.lastProcessedBlock.set(Number(range.toBlock));
-  metrics.blocksBehind.set(Number(finalized - range.toBlock));
-  phase.setBlocks(range.toBlock, finalized);
-  if (range.toBlock === finalized) phase.set('Live');
+  metrics.lastProcessedBlock.set(Number(safeTo));
+  metrics.blocksBehind.set(Number(finalized - safeTo));
+  phase.setBlocks(safeTo, finalized);
+  if (safeTo === finalized) phase.set('Live');
   deps.log.info(
-    { fromBlock: range.fromBlock, toBlock: range.toBlock, inserted, dead: dead.length },
+    { fromBlock: range.fromBlock, toBlock: safeTo, inserted, dead: dead.length },
     'aralık işlendi',
   );
   return true;

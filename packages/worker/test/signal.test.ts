@@ -44,4 +44,35 @@ describe('HeadSignal', () => {
     await s.wait(80, never);
     expect(Date.now() - t0).toBeGreaterThanOrEqual(70);
   });
+
+  it('birincil duyuru sıcak yol hedefi olur; ikincil olmaz, ikisi de uyandırır', () => {
+    const s = new HeadSignal();
+    s.notify({ number: 10n, timestamp: new Date(1000) }, false); // ikincil
+    expect(s.latestPrimaryHead()).toBeNull();
+    s.notify({ number: 11n, timestamp: new Date(2000) }, true);
+    expect(s.latestPrimaryHead()?.number).toBe(11n);
+  });
+
+  it('birincil head geriye gitmez (max kazanır)', () => {
+    const s = new HeadSignal();
+    s.notify({ number: 20n, timestamp: new Date(1000) }, true);
+    s.notify({ number: 19n, timestamp: new Date(900) }, true); // geç gelen eski duyuru
+    expect(s.latestPrimaryHead()?.number).toBe(20n);
+  });
+
+  it('tüm duyuruların timestamp\'leri blok-zamanı önbelleğine yazılır', () => {
+    const s = new HeadSignal();
+    s.notify({ number: 5n, timestamp: new Date(5000) }, false);
+    s.notify({ number: 6n, timestamp: new Date(6000) }, true);
+    expect(s.blockTimes().get(5n)?.getTime()).toBe(5000);
+    expect(s.blockTimes().get(6n)?.getTime()).toBe(6000);
+  });
+
+  it('payload\'sız notify yalnızca uyandırır, hedefi değiştirmez', async () => {
+    const s = new HeadSignal();
+    s.notify({ number: 7n, timestamp: new Date(7000) }, true);
+    s.notify();
+    expect(s.latestPrimaryHead()?.number).toBe(7n);
+    await s.wait(1_000, never); // latch dolu — anında döner
+  });
 });

@@ -11,7 +11,7 @@ import { extractEventDefs, parseWorkerConfig, type WorkerConfig } from '@arcligh
 import { getCursor } from '../src/db.js';
 import { createMetrics } from '../src/metrics.js';
 import { bootstrapIndexer, runLoop, runOnce, type PipelineDeps } from '../src/pipeline.js';
-import { createRpc } from '../src/rpc.js';
+import { createRpc, getBlockTimes } from '../src/rpc.js';
 import { HeadSignal } from '../src/signal.js';
 import { PhaseTracker } from '../src/status.js';
 import { startAnvil, type AnvilHandle } from './helpers/anvil.js';
@@ -158,5 +158,66 @@ describe('pipeline', () => {
     ctrl.abort();
     await loop;
     expect(count).toBe(9);
+  });
+
+  it("sıcak yol: 'latest' modunda hedef birincil sinyalden gelir (guard'ın gördüğü head değil)", async () => {
+    const { HeadSignal: HS } = await import('../src/signal.js');
+    const hs = new HS();
+    const calls = { getBlock: 0 };
+    const fake = {
+      // guard çağrısı: sorgu node'u 5'te — ama hedef sinyaldeki 3 olmalı
+      getBlock: async () => {
+        calls.getBlock += 1;
+        return { number: 5n };
+      },
+      getLogs: async () => [],
+    } as unknown as PipelineDeps['client'];
+    const cfg2 = parseWorkerConfig({
+      indexerName: 'hot',
+      network: { chainId: 31337, rpc: [anvil.url], finalityTag: 'latest' },
+      contracts: [{ name: 'emitter', address: contractAddress, abiPath: 'unused' }],
+      polling: { batchBlocks: 100, intervalMs: 100 },
+    });
+    const d2: PipelineDeps = {
+      ...deps, client: fake, cfg: cfg2, schema: 'idx_hot',
+      headSignal: hs, metrics: createMetrics('hot'), phase: new PhaseTracker(),
+    };
+    await bootstrapIndexer(d2);
+    hs.notify({ number: 3n, timestamp: new Date() }, true);
+    expect(await runOnce(d2)).toBe(true);
+    expect(calls.getBlock).toBe(1); // yalnız paralel tamlık guard'ı
+    expect(await getCursor(pool, 'idx_hot')).toBe(3n); // 5 değil — hedef sinyalden
+  });
+
+  it('tamlık guard\'ı: sorgu node\'u sinyalin gerisindeyse cursor clamp\'lenir', async () => {
+    const { HeadSignal: HS } = await import('../src/signal.js');
+    const hs = new HS();
+    const fake = {
+      getBlock: async () => ({ number: 2n }), // node 2'de, sinyal 5 diyor
+      getLogs: async () => [],
+    } as unknown as PipelineDeps['client'];
+    const cfg2 = parseWorkerConfig({
+      indexerName: 'clamp',
+      network: { chainId: 31337, rpc: [anvil.url], finalityTag: 'latest' },
+      contracts: [{ name: 'emitter', address: contractAddress, abiPath: 'unused' }],
+      polling: { batchBlocks: 100, intervalMs: 100 },
+    });
+    const d2: PipelineDeps = {
+      ...deps, client: fake, cfg: cfg2, schema: 'idx_clamp',
+      headSignal: hs, metrics: createMetrics('clamp'), phase: new PhaseTracker(),
+    };
+    await bootstrapIndexer(d2);
+    hs.notify({ number: 5n, timestamp: new Date() }, true);
+    expect(await runOnce(d2)).toBe(true);
+    expect(await getCursor(pool, 'idx_clamp')).toBe(2n); // görmediği aralık commit edilmez
+  });
+
+  it('getBlockTimes: önbellekteki bloklar için RPC çağrısı yapılmaz', async () => {
+    const client = {
+      getBlock: async () => { throw new Error('önbellek varken çağrılmamalı'); },
+    } as unknown as PipelineDeps['client'];
+    const known = new Map([[5n, new Date(5000)]]);
+    const times = await getBlockTimes(client, [5n, 5n], known);
+    expect(times.get(5n)!.getTime()).toBe(5000);
   });
 });
