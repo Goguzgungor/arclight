@@ -2,7 +2,7 @@
 // Worker gerçek USDC trafiğini WS newHeads DİNLEME modunda tail'ler (polling
 // yalnızca güvenlik ağı) ve gecikme ürünün kendi meta kolonlarından okunur:
 // _ingested_at - block_time. Emitter yok: üçüncü şahıs trafiği ölçülür.
-// Ağ seçimi: BENCH_FRESH_NETWORK=arc-testnet (varsayılan) | base-mainnet
+// Ağ seçimi: BENCH_FRESH_NETWORK (varsayılan arc-testnet; arc-mainnet çıkınca eklenecek)
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
@@ -20,16 +20,7 @@ export const NETWORKS = {
     rpc: ['wss://arc-testnet.drpc.org', 'https://arc-testnet.drpc.org'],
     usdc: '0x3600000000000000000000000000000000000000',
   },
-  'base-mainnet': {
-    chainId: 8453,
-    announceRpc: [] as string[],
-    rpc: [
-      'wss://base-rpc.publicnode.com',
-      'wss://base.drpc.org',
-      'https://base-rpc.publicnode.com',
-    ],
-    usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-  },
+  // arc-mainnet: çıktığında buraya eklenecek (chainId + resmi uçlar + native USDC)
 } as const;
 
 export type FreshNetwork = keyof typeof NETWORKS;

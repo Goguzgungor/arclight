@@ -62,11 +62,9 @@ Sayılar gerçek worker'ı koşturup yalnızca üretim yüzeyinden (Postgres sat
 | Sağlayıcı tabanı | ~0.75–0.9s (p50) | Resmi ucun `newHeads` duyuru gecikmesi — bütçenin indexer dışı kısmı (motorun kendi payı ~40ms) |
 
 Tazelik `_ingested_at − block_time` meta kolonlarından okunur; WS bağlantısı
-pencere boyunca açık kalmazsa koşu geçersiz sayılır. Aynı senaryo
-`BENCH_FRESH_NETWORK=base-mainnet` ile gerçek bir mainnet'te koşar (Base'de
-taban 104ms; en iyi koşuda p50 189ms — ücretsiz uçların duyuru güvenilirliği
-koşudan koşuya değişir). Ham sonuçlar ve HTML rapor: `docs/benchmarks/` ·
-yeniden üretmek için: `pnpm bench`
+pencere boyunca açık kalmazsa koşu geçersiz sayılır. Arc mainnet çıktığında
+aynı suite `NETWORKS`'e eklenecek tek kayıtla orada koşar. Ham sonuçlar ve
+HTML rapor: `docs/benchmarks/` · yeniden üretmek için: `pnpm bench`
 (önkoşul: `docker compose -f docker-compose.dev.yml up -d postgres anvil`).
 
 ## Gözlemlenebilirlik
