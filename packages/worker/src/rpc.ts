@@ -23,7 +23,12 @@ export function splitRpcUrls(urls: string[]): RpcUrlGroups {
 export function wsChainId(url: string, timeoutMs = 5_000): Promise<number> {
   return new Promise((resolve, reject) => {
     const sock = new WebSocket(url);
+    // close() başarısız bağlantıda error event'ini yeniden ateşleyebilir (undici,
+    // Node 22) → onerror → fail → close özyinelemesi; settled bunu kırar.
+    let settled = false;
     const fail = (msg: string): void => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
       sock.close();
       reject(new Error(msg));
@@ -32,6 +37,8 @@ export function wsChainId(url: string, timeoutMs = 5_000): Promise<number> {
     sock.onopen = () =>
       sock.send(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }));
     sock.onmessage = (ev) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
       sock.close();
       const body = JSON.parse(String(ev.data)) as { result?: string };
