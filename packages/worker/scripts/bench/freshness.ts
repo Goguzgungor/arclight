@@ -41,6 +41,7 @@ export const PRIMARY_WS =
 
 const PORT = 9301;
 const SAMPLES = Number(process.env['BENCH_FRESH_SAMPLES'] ?? 40);
+const INTERVAL_MS = Number(process.env['BENCH_FRESH_INTERVAL_MS'] ?? 2000);
 const WINDOW_MS = Number(process.env['BENCH_FRESH_WINDOW_MS'] ?? 240_000);
 
 export async function rpcHead(url: string): Promise<number> {
@@ -66,6 +67,7 @@ export interface FreshnessResult {
   contractAddress: string;
   mode: 'ws-listening';
   headNotifications: number;
+  rpcErrors: number;
   emitter: 'third-party traffic';
   stats: LatencyStats;
   samplesMs: number[];
@@ -90,7 +92,7 @@ export async function run(databaseUrl: string): Promise<FreshnessResult> {
     contracts: [
       { name: 'usdc', address: net.usdc, abiPath: `${dir}/usdc-abi.json`, startBlock: head, events: ['Transfer'] },
     ],
-    polling: { batchBlocks: 1000, intervalMs: 2000 }, // WS varken interval güvenlik ağı
+    polling: { batchBlocks: 1000, intervalMs: INTERVAL_MS }, // WS varken interval güvenlik ağı
   }));
 
   const worker = spawnWorker(configPath, databaseUrl, PORT);
@@ -125,6 +127,7 @@ export async function run(databaseUrl: string): Promise<FreshnessResult> {
     const wsStill = (await metricValue(PORT, 'arclight_ws_connected')) ?? 0;
     if (wsStill !== 1) throw new Error('pencere sonunda WS bağlantısı kopuktu — koşu geçersiz');
     const headNotifications = (await metricValue(PORT, 'arclight_head_notifications_total')) ?? 0;
+    const rpcErrors = (await metricValue(PORT, 'arclight_rpc_errors_total')) ?? 0;
 
     const rows = await db.query(
       `SELECT EXTRACT(EPOCH FROM (_ingested_at - block_time)) * 1000 AS ms, block_number
@@ -139,6 +142,7 @@ export async function run(databaseUrl: string): Promise<FreshnessResult> {
       contractAddress: net.usdc,
       mode: 'ws-listening',
       headNotifications,
+      rpcErrors,
       emitter: 'third-party traffic',
       stats: latencyStats(samplesMs),
       samplesMs,
