@@ -50,3 +50,19 @@ jobs:
             gh release create latest --title "latest" \
               --notes "Rolling release: main'in son hali. Kurulum: kubectl apply -f https://arckive.org/install.yaml"
           gh release upload latest install.yaml --clobber
+      - name: install.yaml'ı site-landing'e senkronla (arckive.org yayını)
+        run: |
+          cp install.yaml "$RUNNER_TEMP/install.yaml"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin site-landing
+          git checkout site-landing
+          mkdir -p site/public
+          cp "$RUNNER_TEMP/install.yaml" site/public/install.yaml
+          if ! git diff --quiet -- site/public/install.yaml || [ -n "$(git status --porcelain site/public/install.yaml)" ]; then
+            git add site/public/install.yaml
+            git commit -m "site: install.yaml güncellendi (main ${GITHUB_SHA:0:7})"
+            git push origin site-landing
+          else
+            echo "install.yaml değişmedi, site push atlanıyor"
+          fi
