@@ -56,7 +56,7 @@ Sayılar gerçek worker'ı koşturup yalnızca üretim yüzeyinden (Postgres sat
 
 | Ölçüm | Sonuç | Bağlam |
 |---|---|---|
-| Blok → SQL, p50 | **0.40s** (p99 0.97s) | Arc public testnet USDC, WS `newHeads` dinleme; resmi uç `announceRpc`'de, sorgular drpc'de |
+| Blok → SQL, p50 | **395ms** (p99 0.97s) | Arc public testnet USDC, WS `newHeads` dinleme; resmi uç `announceRpc`'de, sorgular drpc'de |
 | Backfill | **92.6 blok/s** | 5.107 blok gerçek USDC geçmişi 55 sn'de — zincirden ~48× hızlı, 0 RPC hatası |
 | Burst ingest | **2.628 event/s** | Lokal anvil, decode + tek-tx SQL yazma tavanı |
 | Sağlayıcı tabanı | ~0.75–0.9s (p50) | Resmi ucun `newHeads` duyuru gecikmesi — bütçenin indexer dışı kısmı (motorun kendi payı ~40ms) |
