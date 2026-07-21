@@ -49,6 +49,23 @@ Veri: `idx_<indexer>` şemasında `<contract>_<event>` tabloları
 kontrol tabloları. CR silinince worker kaynakları temizlenir, **DB'ye
 dokunulmaz**.
 
+## Benchmark
+
+Sayılar gerçek worker'ı koşturup yalnızca üretim yüzeyinden (Postgres satırları
++ `/metrics`) okunarak ölçülür — ürün koduna bench enstrümantasyonu girmez:
+
+| Ölçüm | Sonuç | Bağlam |
+|---|---|---|
+| Blok → SQL, p50 | **1.27s** | Arc public testnet USDC, WS `newHeads` dinleme modu (p90 2.06s) |
+| Backfill | **14.8 blok/s** | 5.489 blok gerçek USDC geçmişi (~70 dk zincir zamanı) 370 sn'de — zincirden ~11× hızlı |
+| Burst ingest | **2.628 event/s** | Lokal anvil, decode + tek-tx SQL yazma tavanı |
+| Sağlayıcı tabanı | 0.85s (p50) | RPC'nin `newHeads` duyuru gecikmesi — bütçenin indexer dışı kısmı |
+
+Tazelik `_ingested_at − block_time` meta kolonlarından okunur; WS bağlantısı
+pencere boyunca açık kalmazsa koşu geçersiz sayılır. Ham sonuçlar ve HTML
+rapor: `docs/benchmarks/` · yeniden üretmek için: `pnpm bench`
+(önkoşul: `docker compose -f docker-compose.dev.yml up -d postgres anvil`).
+
 ## Gözlemlenebilirlik
 
 Worker `:9090/metrics` (Prometheus) ve `:9090/healthz` sunar:
