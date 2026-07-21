@@ -61,9 +61,9 @@ async function main(): Promise<void> {
   const subscription = wsUrls.length
     ? subscribeNewHeads({
         wsUrls,
-        onHead: () => {
+        onHead: (head, primary) => {
           metrics.headNotifications.inc();
-          headSignal.notify();
+          headSignal.notify(head ?? undefined, primary);
         },
         onStateChange: (connected) => metrics.wsConnected.set(connected ? 1 : 0),
         log,

@@ -2,8 +2,12 @@
 // Worker head-N bloktan başlar; /metrics 2 sn'de bir örneklenir, healthz Live
 // olunca biter. Chain-time hızlanması satırlardaki block_time aralığından okunur.
 import pg from 'pg';
-import { ARC_CHAIN_ID, ARC_HTTP, ARC_USDC, arcHead, usdcAbi } from './freshness.ts';
+import { rpcHead, usdcAbi } from './freshness.ts';
 import { rate } from './stats.ts';
+
+const ARC_CHAIN_ID = 5042002;
+const ARC_HTTP = 'https://rpc.testnet.arc.network';
+const ARC_USDC = '0x3600000000000000000000000000000000000000';
 import { healthz, metricValue, spawnWorker, stopWorker, waitFor, writeWorkerFiles } from './worker-proc.ts';
 
 const PORT = 9302;
@@ -35,7 +39,7 @@ export interface BackfillResult {
 }
 
 export async function run(databaseUrl: string): Promise<BackfillResult> {
-  const head = await arcHead();
+  const head = await rpcHead(ARC_HTTP);
   const startBlock = head - BLOCKS;
 
   const db = new pg.Client({ connectionString: databaseUrl });

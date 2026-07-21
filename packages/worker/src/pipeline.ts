@@ -35,9 +35,17 @@ export async function bootstrapIndexer(deps: PipelineDeps): Promise<void> {
 
 export async function runOnce(deps: PipelineDeps): Promise<boolean> {
   const { client, pool, cfg, defs, schema, metrics, phase } = deps;
-  const finalized = await getFinalizedBlockNumber(client, cfg.network.finalityTag);
   const cursor = await getCursor(pool, schema);
   if (cursor === null) throw new Error('cursor yok — önce bootstrapIndexer çağrılmalı');
+  // 'latest' modunda hedef, birincil WS'in duyurduğu head'den gelir: getBlock
+  // RTT'si ve duyuran-node/sorgu-node ayrışması (kaçan sinyal → intervalMs
+  // gecikmesi) ortadan kalkar. Sinyal yoksa/eskiyse RPC'ye düşülür.
+  const signalHead =
+    cfg.network.finalityTag === 'latest' ? deps.headSignal.latestPrimaryHead() : null;
+  const finalized =
+    signalHead && signalHead.number > cursor
+      ? signalHead.number
+      : await getFinalizedBlockNumber(client, cfg.network.finalityTag);
   metrics.blocksBehind.set(Number(finalized - cursor));
   phase.setBlocks(cursor, finalized);
 
@@ -53,7 +61,12 @@ export async function runOnce(deps: PipelineDeps): Promise<boolean> {
   const addresses = [...new Set(defs.map((d) => d.address))];
 
   const logs = await fetchLogs(client, addresses, range.fromBlock, range.toBlock);
-  const times = await getBlockTimes(client, logs.map((l) => l.blockNumber!));
+  // newHeads payload'ından beslenen önbellek tail modunda RTT'siz karşılar
+  const times = await getBlockTimes(
+    client,
+    logs.map((l) => l.blockNumber!),
+    deps.headSignal.blockTimes(),
+  );
 
   const rows: DecodedRow[] = [];
   const dead: DeadLetterEntry[] = [];

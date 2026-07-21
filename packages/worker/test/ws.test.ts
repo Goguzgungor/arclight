@@ -27,22 +27,43 @@ describe('subscribeNewHeads', () => {
   });
   afterAll(() => anvil.stop());
 
-  it('yeni blok kazılınca onHead tetiklenir, bağlanınca onStateChange(true)', async () => {
-    let heads = 0;
+  it('yeni blok kazılınca onHead payload (numara+timestamp) ile tetiklenir', async () => {
+    const heads: { number: bigint; timestamp: Date }[] = [];
+    let primaryFlag: boolean | null = null;
     const states: boolean[] = [];
     const sub = subscribeNewHeads({
       wsUrls: [anvil.wsUrl],
-      onHead: () => {
-        heads += 1;
+      onHead: (head, primary) => {
+        if (head) heads.push(head);
+        primaryFlag = primary;
       },
       onStateChange: (c) => states.push(c),
       log,
     });
     await until(() => states.includes(true));
     await mine(anvil.url);
-    await until(() => heads >= 1);
+    await until(() => heads.length >= 1);
     sub.close();
-    expect(heads).toBeGreaterThanOrEqual(1);
+    expect(heads[0]!.number).toBeGreaterThan(0n);
+    expect(heads[0]!.timestamp.getTime()).toBeGreaterThan(Date.now() - 60_000);
+    expect(primaryFlag).toBe(true);
+  });
+
+  it('iki uca paralel abone olur; ikincinin duyurusu primary=false gelir', async () => {
+    const second = await startAnvil();
+    const seen: boolean[] = [];
+    const sub = subscribeNewHeads({
+      wsUrls: [anvil.wsUrl, second.wsUrl],
+      onHead: (_head, primary) => seen.push(primary),
+      onStateChange: () => {},
+      log,
+    });
+    await new Promise((r) => setTimeout(r, 500)); // iki abonelik de açılsın
+    await mine(second.url);
+    await until(() => seen.includes(false));
+    sub.close();
+    second.stop();
+    expect(seen).toContain(false);
   });
 
   it('sunucu ölünce onStateChange(false) gelir', async () => {

@@ -51,13 +51,16 @@ export function wsChainId(url: string, timeoutMs = 5_000): Promise<number> {
 
 export function createRpc(urls: string[]): PublicClient {
   const { http: httpUrls, ws: wsUrls } = splitRpcUrls(urls);
+  // rank kapalı: sorgular listedeki İLK ws ucuna sabitlenir (config sırası =
+  // öncelik). rank açıkken viem istekleri yavaş http transport'una
+  // kaydırabiliyor ve sorgu-node'u newHeads duyuran node'dan ayrışıyordu.
   return createPublicClient({
     transport: fallback(
       [
         ...wsUrls.map((u) => webSocket(u, { timeout: 10_000, retryCount: 2 })),
         ...httpUrls.map((u) => http(u, { timeout: 10_000, retryCount: 2 })),
       ],
-      { rank: true },
+      { rank: false },
     ),
   });
 }
@@ -103,11 +106,25 @@ export async function fetchLogs(
 export async function getBlockTimes(
   client: PublicClient,
   blockNumbers: bigint[],
+  known?: ReadonlyMap<bigint, Date>,
 ): Promise<Map<bigint, Date>> {
   const map = new Map<bigint, Date>();
+  const missing: bigint[] = [];
   for (const n of new Set(blockNumbers.map((b) => b.toString()))) {
-    const block = await client.getBlock({ blockNumber: BigInt(n) });
-    map.set(BigInt(n), new Date(Number(block.timestamp) * 1000));
+    const bn = BigInt(n);
+    const t = known?.get(bn);
+    if (t) map.set(bn, t);
+    else missing.push(bn);
+  }
+  // eksikler sınırlı eşzamanlılıkla: sıralı fetch backfill'de darboğazdı
+  const CONC = 8;
+  for (let i = 0; i < missing.length; i += CONC) {
+    await Promise.all(
+      missing.slice(i, i + CONC).map(async (bn) => {
+        const block = await client.getBlock({ blockNumber: bn });
+        map.set(bn, new Date(Number(block.timestamp) * 1000));
+      }),
+    );
   }
   return map;
 }

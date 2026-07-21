@@ -1,7 +1,8 @@
-// Senaryo 1 — Tazelik: Arc public testnet'te blok kapanışı → SQL satırı.
+// Senaryo 1 — Tazelik: canlı ağda blok kapanışı → SQL satırı.
 // Worker gerçek USDC trafiğini WS newHeads DİNLEME modunda tail'ler (polling
 // yalnızca güvenlik ağı) ve gecikme ürünün kendi meta kolonlarından okunur:
-// _ingested_at - block_time. Emitter yok: üçüncü şahıs testnet trafiği ölçülür.
+// _ingested_at - block_time. Emitter yok: üçüncü şahıs trafiği ölçülür.
+// Ağ seçimi: BENCH_FRESH_NETWORK=arc-testnet (varsayılan) | base-mainnet
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
@@ -9,23 +10,47 @@ import { latencyStats, type LatencyStats } from './stats.ts';
 import { healthz, metricValue, spawnWorker, stopWorker, waitFor, writeWorkerFiles } from './worker-proc.ts';
 
 const ROOT = resolve(import.meta.dirname, '../../../..');
-export const ARC_CHAIN_ID = 5042002;
-export const ARC_WS = 'wss://arc-testnet.drpc.org';
-export const ARC_HTTP = 'https://arc-testnet.drpc.org';
-export const ARC_USDC = '0x3600000000000000000000000000000000000000';
+
+export const NETWORKS = {
+  'arc-testnet': {
+    chainId: 5042002,
+    // birincil ws = resmi uç (ölçümde her blokta ilk duyuran); drpc yedeklilik
+    rpc: [
+      'wss://rpc.testnet.arc.network',
+      'wss://arc-testnet.drpc.org',
+      'https://rpc.testnet.arc.network',
+    ],
+    usdc: '0x3600000000000000000000000000000000000000',
+  },
+  'base-mainnet': {
+    chainId: 8453,
+    rpc: [
+      'wss://base-rpc.publicnode.com',
+      'wss://base.drpc.org',
+      'https://base-rpc.publicnode.com',
+    ],
+    usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  },
+} as const;
+
+export type FreshNetwork = keyof typeof NETWORKS;
+export const FRESH_NETWORK = (process.env['BENCH_FRESH_NETWORK'] ?? 'arc-testnet') as FreshNetwork;
+if (!(FRESH_NETWORK in NETWORKS)) throw new Error(`bilinmeyen ağ: ${FRESH_NETWORK}`);
+export const PRIMARY_WS = NETWORKS[FRESH_NETWORK].rpc[0];
+
 const PORT = 9301;
 const SAMPLES = Number(process.env['BENCH_FRESH_SAMPLES'] ?? 40);
 const WINDOW_MS = Number(process.env['BENCH_FRESH_WINDOW_MS'] ?? 240_000);
 
-export async function arcHead(): Promise<number> {
-  const res = await fetch(ARC_HTTP, {
+export async function rpcHead(url: string): Promise<number> {
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_blockNumber', params: [] }),
     signal: AbortSignal.timeout(15_000),
   });
   const body = (await res.json()) as { result?: string };
-  if (!body.result) throw new Error('arc testnet eth_blockNumber boş döndü');
+  if (!body.result) throw new Error(`eth_blockNumber boş döndü: ${url}`);
   return Number(body.result);
 }
 
@@ -35,8 +60,8 @@ export function usdcAbi(): unknown {
 
 export interface FreshnessResult {
   kind: 'freshness';
-  network: 'arc-testnet';
-  rpc: string[];
+  network: FreshNetwork;
+  rpc: readonly string[];
   contractAddress: string;
   mode: 'ws-listening';
   headNotifications: number;
@@ -48,7 +73,9 @@ export interface FreshnessResult {
 }
 
 export async function run(databaseUrl: string): Promise<FreshnessResult> {
-  const head = await arcHead();
+  const net = NETWORKS[FRESH_NETWORK];
+  const httpUrl = net.rpc.find((u) => u.startsWith('http'))!;
+  const head = await rpcHead(httpUrl);
 
   const db = new pg.Client({ connectionString: databaseUrl });
   await db.connect();
@@ -56,9 +83,9 @@ export async function run(databaseUrl: string): Promise<FreshnessResult> {
 
   const configPath = writeWorkerFiles('fresh', { 'usdc-abi.json': usdcAbi() }, (dir) => ({
     indexerName: 'bench-fresh',
-    network: { chainId: ARC_CHAIN_ID, rpc: [ARC_WS, ARC_HTTP], finalityTag: 'latest' },
+    network: { chainId: net.chainId, rpc: net.rpc, finalityTag: 'latest' },
     contracts: [
-      { name: 'usdc', address: ARC_USDC, abiPath: `${dir}/usdc-abi.json`, startBlock: head, events: ['Transfer'] },
+      { name: 'usdc', address: net.usdc, abiPath: `${dir}/usdc-abi.json`, startBlock: head, events: ['Transfer'] },
     ],
     polling: { batchBlocks: 1000, intervalMs: 2000 }, // WS varken interval güvenlik ağı
   }));
@@ -104,9 +131,9 @@ export async function run(databaseUrl: string): Promise<FreshnessResult> {
     const blocks = rows.rows.map((r) => Number(r.block_number));
     return {
       kind: 'freshness',
-      network: 'arc-testnet',
-      rpc: [ARC_WS, ARC_HTTP],
-      contractAddress: ARC_USDC,
+      network: FRESH_NETWORK,
+      rpc: net.rpc,
+      contractAddress: net.usdc,
       mode: 'ws-listening',
       headNotifications,
       emitter: 'third-party traffic',
