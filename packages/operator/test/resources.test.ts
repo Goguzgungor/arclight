@@ -8,7 +8,7 @@ const spec = IndexerSpecSchema.parse({
   storage: { mode: 'External', external: { dsnSecretRef: { name: 'pg-dsn', key: 'url' } } },
   contracts: [
     { name: 'emitter', address: ADDR, abi: { configMapRef: { name: 'emitter-abi' } } },
-    { name: 'ikinci', address: ADDR, abi: { configMapRef: { name: 'ikinci-abi', key: 'k.json' } } },
+    { name: 'second', address: ADDR, abi: { configMapRef: { name: 'second-abi', key: 'k.json' } } },
   ],
 });
 const input = {
@@ -19,7 +19,7 @@ const input = {
 };
 
 describe('workerResourceName', () => {
-  it('arclight- öneki ekler, 63 karakteri aşınca fırlatır', () => {
+  it('adds the arclight- prefix, throws when exceeding 63 characters', () => {
     expect(workerResourceName('demo')).toBe('arclight-demo');
     expect(() => workerResourceName('x'.repeat(60))).toThrow(/63/);
   });
@@ -28,7 +28,7 @@ describe('workerResourceName', () => {
 describe('desiredResources', () => {
   const d = desiredResources(input);
 
-  it('tüm kaynaklarda ownerReference ve isimler doğru', () => {
+  it('ownerReference and names are correct on all resources', () => {
     for (const r of [d.configMap, d.serviceAccount, d.role, d.roleBinding, d.deployment]) {
       expect(r.metadata?.ownerReferences?.[0]).toMatchObject({
         apiVersion: 'arclight.dev/v1alpha1',
@@ -44,7 +44,7 @@ describe('desiredResources', () => {
     expect(d.role.metadata?.name).toBe('arclight-demo-status');
   });
 
-  it('config ConfigMap render edilmiş worker config içerir ve hash eşleşir', () => {
+  it('config ConfigMap contains the rendered worker config and the hash matches', () => {
     const rendered = renderWorkerConfig('demo', spec);
     expect(JSON.parse(d.configMap.data!['config.json']!)).toEqual(
       JSON.parse(JSON.stringify(rendered)),
@@ -55,7 +55,7 @@ describe('desiredResources', () => {
     });
   });
 
-  it('deployment: tek replika, Recreate, env ve probe sözleşmesi', () => {
+  it('deployment: single replica, Recreate, env and probe contract', () => {
     expect(d.deployment.spec?.replicas).toBe(1);
     expect(d.deployment.spec?.strategy?.type).toBe('Recreate');
     const c = d.deployment.spec!.template.spec!.containers[0]!;
@@ -70,19 +70,19 @@ describe('desiredResources', () => {
     expect(c.readinessProbe?.httpGet?.path).toBe('/healthz');
   });
 
-  it('her contract için ABI volume + mount üretir', () => {
+  it('produces an ABI volume + mount for each contract', () => {
     const volumes = d.deployment.spec!.template.spec!.volumes!;
-    expect(volumes.map((v) => v.name)).toEqual(['config', 'abi-emitter', 'abi-ikinci']);
+    expect(volumes.map((v) => v.name)).toEqual(['config', 'abi-emitter', 'abi-second']);
     const mounts = d.deployment.spec!.template.spec!.containers[0]!.volumeMounts!;
     expect(mounts).toContainEqual({
-      name: 'abi-ikinci',
-      mountPath: '/etc/arclight/abis/ikinci',
+      name: 'abi-second',
+      mountPath: '/etc/arclight/abis/second',
       readOnly: true,
     });
-    expect(volumes[2]!.configMap?.name).toBe('ikinci-abi');
+    expect(volumes[2]!.configMap?.name).toBe('second-abi');
   });
 
-  it('role yalnızca kendi CR statusunu patch edebilir', () => {
+  it('role can only patch its own CR status', () => {
     expect(d.role.rules).toEqual([
       {
         apiGroups: ['arclight.dev'],

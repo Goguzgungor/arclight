@@ -10,5 +10,5 @@ kubectl apply -f charts/arclight/crds/indexer.yaml
 kubectl apply -f e2e/fixtures/
 kubectl rollout status deploy/postgres deploy/anvil --timeout=120s
 
-echo "Hazır. Operatörü lokal başlat:"
+echo "Ready. Start the operator locally:"
 echo "  pnpm -r build && WORKER_IMAGE=arclight-worker:dev pnpm --filter @arclight/operator start"

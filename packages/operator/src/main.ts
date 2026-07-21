@@ -10,7 +10,7 @@ const log = pino({ level: process.env['LOG_LEVEL'] ?? 'info' });
 
 async function main(): Promise<void> {
   const workerImage = process.env['WORKER_IMAGE'];
-  if (!workerImage) throw new Error('WORKER_IMAGE zorunlu');
+  if (!workerImage) throw new Error('WORKER_IMAGE is required');
   const resyncMs = Number(process.env['RESYNC_INTERVAL_MS'] ?? 300_000);
   const healthPort = Number(process.env['HEALTH_PORT'] ?? 8080);
 
@@ -20,7 +20,7 @@ async function main(): Promise<void> {
     try {
       await reconcile(deps, cr);
     } catch (err) {
-      log.error({ err, indexer: cr.metadata?.name }, 'reconcile hatası');
+      log.error({ err, indexer: cr.metadata?.name }, 'reconcile error');
     }
   };
 
@@ -34,7 +34,7 @@ async function main(): Promise<void> {
   });
   health.listen(healthPort);
 
-  // silinen CR'ın temizliği ownerReferences + GC'de; Deleted'da iş yok
+  // cleanup of deleted CRs is handled by ownerReferences + GC; nothing to do on Deleted
   const watcher = K8s(Indexer).Watch((cr, phase) => {
     if (phase === WatchPhase.Deleted) return;
     void safeReconcile(cr);
@@ -47,21 +47,21 @@ async function main(): Promise<void> {
       .then(async (crs) => {
         for (const cr of crs) await safeReconcile(cr);
       })
-      .catch((err: unknown) => log.error({ err }, 'resync hatası'));
+      .catch((err: unknown) => log.error({ err }, 'resync error'));
   }, resyncMs);
 
   const shutdown = (): void => {
-    log.info('kapanma sinyali alındı');
+    log.info('shutdown signal received');
     clearInterval(resync);
     watcher.close();
     health.close();
   };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
-  log.info({ workerImage, resyncMs }, 'arclight operatör başladı');
+  log.info({ workerImage, resyncMs }, 'arclight operator started');
 }
 
 main().catch((err: unknown) => {
-  log.fatal({ err }, 'operatör başlatılamadı');
+  log.fatal({ err }, 'operator failed to start');
   process.exit(1);
 });

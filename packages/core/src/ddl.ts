@@ -14,8 +14,8 @@ export const COMMON_COLUMNS: ReadonlyArray<readonly [string, string]> = [
   ['contract_address', 'text NOT NULL'],
 ];
 
-// _ingested_at DB tarafından doldurulur (DEFAULT now()); decode üretmez,
-// bu yüzden COMMON_COLUMNS'ta değil ama ad çakışması için rezervedir.
+// _ingested_at is filled in by the DB (DEFAULT now()); decode does not produce it,
+// so it is not in COMMON_COLUMNS but is reserved to avoid name collisions.
 export const INGESTED_AT = '_ingested_at';
 const RESERVED = new Set([...COMMON_COLUMNS.map(([n]) => n), INGESTED_AT]);
 const q = (id: string) => `"${id}"`;
@@ -28,7 +28,7 @@ export function pgTypeFor(abiType: string): string {
   if (abiType === 'string') return 'text';
   if (/^bytes(\d+)?$/.test(abiType)) return 'bytea';
   if (/^u?int\d*$/.test(abiType)) return 'numeric(78,0)';
-  throw new DdlError(`Bilinmeyen ABI tipi: ${abiType}`);
+  throw new DdlError(`Unknown ABI type: ${abiType}`);
 }
 
 export interface EventColumn {
@@ -44,7 +44,7 @@ export function eventColumns(event: AbiEvent): EventColumn[] {
     return { name, abiType: param.type, indexed: param.indexed === true };
   });
   const dup = cols.map((c) => c.name).find((n, i, a) => a.indexOf(n) !== i);
-  if (dup) throw new DdlError(`${event.name}: kolon adı çakışması: ${dup}`);
+  if (dup) throw new DdlError(`${event.name}: column name collision: ${dup}`);
   return cols;
 }
 
@@ -64,7 +64,7 @@ export function buildEventTable(schema: string, def: EventDef): TableSpec {
   ];
   const statements = [
     `CREATE TABLE IF NOT EXISTS ${q(schema)}.${q(def.tableName)} (\n  ${lines.join(',\n  ')}\n)`,
-    // eski kurulumlar için idempotent migrasyon (eski satırlar migrasyon anını taşır)
+    // idempotent migration for existing installs (old rows carry the migration timestamp)
     `ALTER TABLE ${q(schema)}.${q(def.tableName)} ` +
       `ADD COLUMN IF NOT EXISTS ${q(INGESTED_AT)} timestamptz NOT NULL DEFAULT now()`,
     ...cols

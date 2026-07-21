@@ -41,7 +41,7 @@ export function decodeLogToRow(def: EventDef, log: RawLog, blockTime: Date): Dec
   try {
     ({ args } = decodeEventLog({ abi: [def.event], data: log.data, topics: log.topics }));
   } catch (cause) {
-    throw new DecodeError(`${def.tableName}: log decode edilemedi`, { cause });
+    throw new DecodeError(`${def.tableName}: failed to decode log`, { cause });
   }
   const columns: Record<string, unknown> = {
     block_number: log.blockNumber.toString(),
@@ -59,7 +59,7 @@ export function decodeLogToRow(def: EventDef, log: RawLog, blockTime: Date): Dec
       ? (args as Record<string, unknown>)[param.name]
       : (args as unknown[])[i];
     if (raw === undefined) {
-      throw new DecodeError(`${def.tableName}: '${col.name}' parametresi decode sonucunda yok`);
+      throw new DecodeError(`${def.tableName}: parameter '${col.name}' missing from decode result`);
     }
     columns[col.name] = toSqlValue(col.abiType, raw);
   }

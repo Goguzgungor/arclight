@@ -18,13 +18,13 @@ export function splitRpcUrls(urls: string[]): RpcUrlGroups {
   return groups;
 }
 
-// Ham WebSocket ile tek seferlik eth_chainId — viem transport'u açık soket
-// bırakmasın diye sağlık kontrolünde kullanılır.
+// One-shot eth_chainId over a raw WebSocket — used in the health check so the
+// viem transport doesn't leave a socket open.
 export function wsChainId(url: string, timeoutMs = 5_000): Promise<number> {
   return new Promise((resolve, reject) => {
     const sock = new WebSocket(url);
-    // close() başarısız bağlantıda error event'ini yeniden ateşleyebilir (undici,
-    // Node 22) → onerror → fail → close özyinelemesi; settled bunu kırar.
+    // close() on a failed connection can re-fire the error event (undici,
+    // Node 22) → onerror → fail → close recursion; settled breaks it.
     let settled = false;
     const fail = (msg: string): void => {
       if (settled) return;
@@ -33,7 +33,7 @@ export function wsChainId(url: string, timeoutMs = 5_000): Promise<number> {
       sock.close();
       reject(new Error(msg));
     };
-    const timer = setTimeout(() => fail(`ws chainId zaman aşımı: ${url}`), timeoutMs);
+    const timer = setTimeout(() => fail(`ws chainId timed out: ${url}`), timeoutMs);
     sock.onopen = () =>
       sock.send(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] }));
     sock.onmessage = (ev) => {
@@ -43,17 +43,18 @@ export function wsChainId(url: string, timeoutMs = 5_000): Promise<number> {
       sock.close();
       const body = JSON.parse(String(ev.data)) as { result?: string };
       if (body.result) resolve(Number(body.result));
-      else reject(new Error(`eth_chainId sonuç dönmedi: ${url}`));
+      else reject(new Error(`eth_chainId returned no result: ${url}`));
     };
-    sock.onerror = () => fail(`ws bağlantı hatası: ${url}`);
+    sock.onerror = () => fail(`ws connection error: ${url}`);
   });
 }
 
 export function createRpc(urls: string[]): PublicClient {
   const { http: httpUrls, ws: wsUrls } = splitRpcUrls(urls);
-  // rank kapalı: sorgular listedeki İLK ws ucuna sabitlenir (config sırası =
-  // öncelik). rank açıkken viem istekleri yavaş http transport'una
-  // kaydırabiliyor ve sorgu-node'u newHeads duyuran node'dan ayrışıyordu.
+  // rank disabled: queries are pinned to the FIRST ws endpoint in the list
+  // (config order = priority). With rank enabled, viem could shift requests to
+  // the slow http transport, and the query node diverged from the node
+  // announcing newHeads.
   return createPublicClient({
     transport: fallback(
       [
@@ -90,7 +91,7 @@ export async function getFinalizedBlockNumber(
   tag: 'finalized' | 'safe' | 'latest',
 ): Promise<bigint> {
   const block = await client.getBlock({ blockTag: tag });
-  if (block.number === null) throw new Error(`'${tag}' bloğunun numarası yok (pending?)`);
+  if (block.number === null) throw new Error(`block '${tag}' has no number (pending?)`);
   return block.number;
 }
 
@@ -116,7 +117,7 @@ export async function getBlockTimes(
     if (t) map.set(bn, t);
     else missing.push(bn);
   }
-  // eksikler sınırlı eşzamanlılıkla: sıralı fetch backfill'de darboğazdı
+  // missing entries with bounded concurrency: sequential fetch was a backfill bottleneck
   const CONC = 8;
   for (let i = 0; i < missing.length; i += CONC) {
     await Promise.all(

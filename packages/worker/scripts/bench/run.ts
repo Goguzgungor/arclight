@@ -1,7 +1,7 @@
-// arclight-bench orkestratörü: senaryoları sırayla koşar, results.json yazar.
-//   pnpm bench                          # dört senaryo da
+// arclight-bench orchestrator: runs the scenarios in order, writes results.json.
+//   pnpm bench                          # all four scenarios
 //   BENCH_SCENARIOS=freshness pnpm bench
-// Çıktı: docs/benchmarks/<YYYY-MM-DD>/results.json
+// Output: docs/benchmarks/<YYYY-MM-DD>/results.json
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -27,7 +27,7 @@ async function main(): Promise<void> {
     .map((s) => s.trim())
     .filter(Boolean);
   for (const s of selected) {
-    if (!(s in SCENARIOS)) throw new Error(`bilinmeyen senaryo: ${s}`);
+    if (!(s in SCENARIOS)) throw new Error(`unknown scenario: ${s}`);
   }
 
   const results: Record<string, unknown> = {
@@ -40,16 +40,16 @@ async function main(): Promise<void> {
 
   let failed = false;
   for (const name of selected) {
-    console.log(`\n=== senaryo: ${name} ===`);
+    console.log(`\n=== scenario: ${name} ===`);
     const t0 = performance.now();
     try {
       results[name] = await SCENARIOS[name]!();
-      console.log(`${name} tamam (${((performance.now() - t0) / 1000).toFixed(1)}s)`);
+      console.log(`${name} done (${((performance.now() - t0) / 1000).toFixed(1)}s)`);
     } catch (err) {
       failed = true;
       const message = err instanceof Error ? err.message : String(err);
       results[name] = { error: message };
-      console.error(`${name} BAŞARISIZ: ${message}`);
+      console.error(`${name} FAILED: ${message}`);
     }
   }
 
@@ -57,12 +57,12 @@ async function main(): Promise<void> {
   const outDir = join(ROOT, 'docs', 'benchmarks', day);
   mkdirSync(outDir, { recursive: true });
   const outPath = join(outDir, 'results.json');
-  // aynı günün önceki koşularıyla birleştir — senaryolar tek tek koşulabilsin
+  // merge with earlier runs from the same day — so scenarios can be run one at a time
   const previous = existsSync(outPath)
     ? (JSON.parse(readFileSync(outPath, 'utf8')) as Record<string, unknown>)
     : {};
   writeFileSync(outPath, JSON.stringify({ ...previous, ...results }, null, 2));
-  console.log(`\nsonuçlar: ${outPath}`);
+  console.log(`\nresults: ${outPath}`);
   if (failed) process.exitCode = 1;
 }
 

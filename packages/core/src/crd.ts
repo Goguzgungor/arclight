@@ -9,6 +9,11 @@ export const IndexerSpecSchema = z.object({
   network: z.object({
     chainId: z.number().int().positive(),
     rpc: z.array(RpcUrlSchema).min(1),
+    // ws endpoints listened to for newHeads only — not part of the query pool (CRD
+    // counterpart of the worker's announceRpc; renderWorkerConfig passes it through as-is)
+    announceRpc: z
+      .array(z.string().regex(/^wss?:\/\//i, 'announceRpc must be ws(s):// only'))
+      .default([]),
     finalityTag: z.enum(['finalized', 'safe', 'latest']).default('finalized'),
   }),
   storage: z.object({
@@ -23,11 +28,11 @@ export const IndexerSpecSchema = z.object({
   contracts: z
     .array(
       z.object({
-        // tablo adına (snake_case) ve K8s volume adına gider — DNS-1123 uyumlu
+        // feeds the table name (snake_case) and the K8s volume name — DNS-1123 compliant
         name: z
           .string()
-          .regex(/^[a-z][a-z0-9-]{0,29}$/, 'contract adı: küçük harf, rakam, tire; harfle başlar; <=30'),
-        address: z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'geçersiz EVM adresi'),
+          .regex(/^[a-z][a-z0-9-]{0,29}$/, 'contract name: lowercase letters, digits, hyphens; starts with a letter; <=30'),
+        address: z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'invalid EVM address'),
         abi: z.object({
           configMapRef: z.object({
             name: z.string().min(1),

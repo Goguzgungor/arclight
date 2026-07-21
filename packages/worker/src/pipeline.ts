@@ -36,10 +36,11 @@ export async function bootstrapIndexer(deps: PipelineDeps): Promise<void> {
 export async function runOnce(deps: PipelineDeps): Promise<boolean> {
   const { client, pool, cfg, defs, schema, metrics, phase } = deps;
   const cursor = await getCursor(pool, schema);
-  if (cursor === null) throw new Error('cursor yok — önce bootstrapIndexer çağrılmalı');
-  // 'latest' modunda hedef, birincil WS'in duyurduğu head'den gelir: getBlock
-  // RTT'si ve duyuran-node/sorgu-node ayrışması (kaçan sinyal → intervalMs
-  // gecikmesi) ortadan kalkar. Sinyal yoksa/eskiyse RPC'ye düşülür.
+  if (cursor === null) throw new Error('no cursor — call bootstrapIndexer first');
+  // In 'latest' mode the target comes from the head announced by the primary
+  // WS: the getBlock RTT and the announcing-node/query-node divergence (missed
+  // signal → intervalMs delay) disappear. If the signal is missing or stale,
+  // we fall back to the RPC.
   const signalHead =
     cfg.network.finalityTag === 'latest' ? deps.headSignal.latestPrimaryHead() : null;
   const finalized =
@@ -60,10 +61,11 @@ export async function runOnce(deps: PipelineDeps): Promise<boolean> {
   const startBlocks = new Map(cfg.contracts.map((c) => [c.address.toLowerCase(), BigInt(c.startBlock)]));
   const addresses = [...new Set(defs.map((d) => d.address))];
 
-  // Tamlık guard'ı: hedef sinyalden geldiyse sorgu node'u (LB) duyurulan
-  // bloğun gerisinde olabilir — getLogs'un sessiz-eksik cevabına güvenilmez.
-  // blockNumber guard'ı getLogs'a PARALEL gider (ek gecikme yok); node
-  // geriden geliyorsa yalnız gördüğü kısım commit edilir, kalan sonraki tura.
+  // Completeness guard: if the target came from the signal, the query node
+  // (LB) may lag behind the announced block — getLogs' silently-incomplete
+  // response cannot be trusted. The blockNumber guard runs IN PARALLEL with
+  // getLogs (no extra latency); if the node is lagging, only the part it has
+  // seen is committed and the rest goes to the next round.
   let logs;
   let safeTo = range.toBlock;
   if (signalHead && finalized === signalHead.number) {
@@ -71,13 +73,13 @@ export async function runOnce(deps: PipelineDeps): Promise<boolean> {
       fetchLogs(client, addresses, range.fromBlock, range.toBlock),
       getFinalizedBlockNumber(client, cfg.network.finalityTag),
     ]);
-    if (queryHead < range.fromBlock) return false; // node çok geride — tur yok
+    if (queryHead < range.fromBlock) return false; // node too far behind — skip this round
     safeTo = queryHead < range.toBlock ? queryHead : range.toBlock;
     logs = fetched.filter((l) => l.blockNumber! <= safeTo);
   } else {
     logs = await fetchLogs(client, addresses, range.fromBlock, range.toBlock);
   }
-  // newHeads payload'ından beslenen önbellek tail modunda RTT'siz karşılar
+  // the cache fed from the newHeads payload answers with zero RTT in tail mode
   const times = await getBlockTimes(
     client,
     logs.map((l) => l.blockNumber!),
@@ -89,7 +91,7 @@ export async function runOnce(deps: PipelineDeps): Promise<boolean> {
   for (const log of logs) {
     const address = log.address.toLowerCase() as `0x${string}`;
     const def = byKey.get(`${address}:${log.topics[0]}`);
-    if (!def) continue; // izlenmeyen event
+    if (!def) continue; // untracked event
     if (log.blockNumber! < (startBlocks.get(address) ?? 0n)) continue;
     try {
       rows.push(decodeLogToRow(def, log as unknown as RawLog, times.get(log.blockNumber!)!));
@@ -115,7 +117,7 @@ export async function runOnce(deps: PipelineDeps): Promise<boolean> {
   if (safeTo === finalized) phase.set('Live');
   deps.log.info(
     { fromBlock: range.fromBlock, toBlock: safeTo, inserted, dead: dead.length },
-    'aralık işlendi',
+    'range processed',
   );
   return true;
 }
@@ -132,12 +134,12 @@ export async function runLoop(deps: PipelineDeps, signal: AbortSignal): Promise<
     try {
       const progressed = await runOnce(deps);
       backoffMs = 1000;
-      // boşta: newHeads sinyali VEYA intervalMs (güvenlik ağı) — hangisi önce
+      // idle: newHeads signal OR intervalMs (safety net) — whichever comes first
       if (!progressed) await deps.headSignal.wait(deps.cfg.polling.intervalMs, signal);
     } catch (err) {
       deps.metrics.rpcErrors.inc();
       deps.phase.set('Degraded', err instanceof Error ? err.message : String(err));
-      deps.log.error({ err }, 'pipeline hatası — backoff ile yeniden denenecek');
+      deps.log.error({ err }, 'pipeline error — retrying with backoff');
       await sleep(backoffMs, signal);
       backoffMs = Math.min(backoffMs * 2, 30_000);
     }

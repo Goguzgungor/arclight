@@ -1,12 +1,13 @@
-// Senaryo 2 — Backfill: Arc testnet'te gerçek USDC geçmişini yakalama hızı.
-// Worker head-N bloktan başlar; /metrics 2 sn'de bir örneklenir, healthz Live
-// olunca biter. Chain-time hızlanması satırlardaki block_time aralığından okunur.
+// Scenario 2 — Backfill: how fast real USDC history is caught up on Arc testnet.
+// The worker starts head-N blocks behind; /metrics is sampled every 2 s and the
+// run ends when healthz reports Live. The chain-time speedup is read from the
+// block_time span of the rows.
 import pg from 'pg';
 import { rpcHead, usdcAbi } from './freshness.ts';
 import { rate } from './stats.ts';
 
 const ARC_CHAIN_ID = 5042002;
-const ARC_HTTP = 'https://arc-testnet.drpc.org'; // resmi uç sorguda rate-limit'li (-32011)
+const ARC_HTTP = 'https://arc-testnet.drpc.org'; // the official endpoint is rate-limited for queries (-32011)
 const ARC_USDC = '0x3600000000000000000000000000000000000000';
 import { healthz, metricValue, spawnWorker, stopWorker, waitFor, writeWorkerFiles } from './worker-proc.ts';
 
@@ -33,7 +34,7 @@ export interface BackfillResult {
   durationMs: number;
   blocksPerSec: number;
   eventsPerSec: number;
-  chainSpanSec: number; // işlenen aralığın zincir zamanı (block_time max-min)
+  chainSpanSec: number; // chain time of the processed range (block_time max-min)
   rpcErrors: number;
   series: BackfillSample[];
 }
@@ -62,7 +63,7 @@ export async function run(databaseUrl: string): Promise<BackfillResult> {
     await waitFor('worker healthz up', async () => (await healthz(PORT)) !== null, 60_000);
 
     await waitFor(
-      'backfill Live oldu',
+      'backfill reached Live',
       async () => {
         const h = await healthz(PORT);
         const block = (await metricValue(PORT, 'arclight_last_processed_block')) ?? 0;

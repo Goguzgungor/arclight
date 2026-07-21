@@ -11,7 +11,7 @@ export function toSnakeCase(input: string): string {
 
 function assertPgIdentifier(id: string): string {
   if (Buffer.byteLength(id, 'utf8') > 63) {
-    throw new NamingError(`PostgreSQL tanımlayıcısı 63 baytı aşıyor: ${id}`);
+    throw new NamingError(`PostgreSQL identifier exceeds 63 bytes: ${id}`);
   }
   return id;
 }

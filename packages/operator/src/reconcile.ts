@@ -30,8 +30,8 @@ export async function reconcile(deps: ReconcileDeps, cr: Indexer): Promise<void>
   const uid = cr.metadata?.uid;
   if (!name || !namespace || !uid) return;
 
-  // Değişmemiş status'u tekrar patch'leme: her patch yeni bir watch event'i
-  // üretir ve reconcile fırtınasına (self-feeding loop → OOM) yol açar.
+  // Do not re-patch an unchanged status: every patch produces a new watch
+  // event and leads to a reconcile storm (self-feeding loop → OOM).
   const current = cr.status?.conditions?.find((c) => c.type === 'Provisioned');
   const setCondition = (c: IndexerCondition) => {
     const unchanged =
@@ -61,7 +61,7 @@ export async function reconcile(deps: ReconcileDeps, cr: Indexer): Promise<void>
     const cm = await deps.kube.getConfigMap(namespace, ref.name);
     if (!cm?.data?.[ref.key]) {
       await setCondition(
-        condition('False', 'MissingAbiConfigMap', `ConfigMap ${ref.name}/${ref.key} bulunamadı`),
+        condition('False', 'MissingAbiConfigMap', `ConfigMap ${ref.name}/${ref.key} not found`),
       );
       return;
     }
@@ -71,7 +71,7 @@ export async function reconcile(deps: ReconcileDeps, cr: Indexer): Promise<void>
   const secret = await deps.kube.getSecret(namespace, dsnRef.name);
   if (!secret?.data?.[dsnRef.key]) {
     await setCondition(
-      condition('False', 'MissingDsnSecret', `Secret ${dsnRef.name}/${dsnRef.key} bulunamadı`),
+      condition('False', 'MissingDsnSecret', `Secret ${dsnRef.name}/${dsnRef.key} not found`),
     );
     return;
   }
@@ -88,5 +88,5 @@ export async function reconcile(deps: ReconcileDeps, cr: Indexer): Promise<void>
   await deps.kube.applyConfigMap(desired.configMap);
   await deps.kube.applyDeployment(desired.deployment);
   await setCondition(condition('True', 'Reconciled'));
-  deps.log.info({ indexer: name, namespace, hash: desired.hash }, 'reconcile tamam');
+  deps.log.info({ indexer: name, namespace, hash: desired.hash }, 'reconcile done');
 }

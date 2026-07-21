@@ -1,8 +1,8 @@
-// Senaryo 1 — Tazelik: canlı ağda blok kapanışı → SQL satırı.
-// Worker gerçek USDC trafiğini WS newHeads DİNLEME modunda tail'ler (polling
-// yalnızca güvenlik ağı) ve gecikme ürünün kendi meta kolonlarından okunur:
-// _ingested_at - block_time. Emitter yok: üçüncü şahıs trafiği ölçülür.
-// Ağ seçimi: BENCH_FRESH_NETWORK (varsayılan arc-testnet; arc-mainnet çıkınca eklenecek)
+// Scenario 1 — Freshness: block close → SQL row on a live network.
+// The worker tails real USDC traffic in WS newHeads LISTENING mode (polling is
+// only a safety net) and latency is read from the product's own meta columns:
+// _ingested_at - block_time. No emitter: third-party traffic is measured.
+// Network selection: BENCH_FRESH_NETWORK (default arc-testnet; arc-mainnet will be added once it launches)
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
@@ -14,18 +14,18 @@ const ROOT = resolve(import.meta.dirname, '../../../..');
 export const NETWORKS = {
   'arc-testnet': {
     chainId: 5042002,
-    // resmi uç duyuruda en hızlı ama sorguda sıkı rate-limit'li (-32011):
-    // yalnız announceRpc'de dinler; sorgular drpc'ye gider
+    // the official endpoint announces fastest but is strictly rate-limited for
+    // queries (-32011): it only listens via announceRpc; queries go to drpc
     announceRpc: ['wss://rpc.testnet.arc.network'],
     rpc: ['wss://arc-testnet.drpc.org', 'https://arc-testnet.drpc.org'],
     usdc: '0x3600000000000000000000000000000000000000',
   },
-  // arc-mainnet: çıktığında buraya eklenecek (chainId + resmi uçlar + native USDC)
+  // arc-mainnet: to be added here once it launches (chainId + official endpoints + native USDC)
 } as const;
 
 export type FreshNetwork = keyof typeof NETWORKS;
 export const FRESH_NETWORK = (process.env['BENCH_FRESH_NETWORK'] ?? 'arc-testnet') as FreshNetwork;
-if (!(FRESH_NETWORK in NETWORKS)) throw new Error(`bilinmeyen ağ: ${FRESH_NETWORK}`);
+if (!(FRESH_NETWORK in NETWORKS)) throw new Error(`unknown network: ${FRESH_NETWORK}`);
 export const PRIMARY_WS =
   NETWORKS[FRESH_NETWORK].announceRpc[0] ??
   NETWORKS[FRESH_NETWORK].rpc.find((u) => u.startsWith('ws'))!;
@@ -43,7 +43,7 @@ export async function rpcHead(url: string): Promise<number> {
     signal: AbortSignal.timeout(15_000),
   });
   const body = (await res.json()) as { result?: string };
-  if (!body.result) throw new Error(`eth_blockNumber boş döndü: ${url}`);
+  if (!body.result) throw new Error(`eth_blockNumber returned empty: ${url}`);
   return Number(body.result);
 }
 
@@ -83,23 +83,24 @@ export async function run(databaseUrl: string): Promise<FreshnessResult> {
     contracts: [
       { name: 'usdc', address: net.usdc, abiPath: `${dir}/usdc-abi.json`, startBlock: head, events: ['Transfer'] },
     ],
-    polling: { batchBlocks: 1000, intervalMs: INTERVAL_MS }, // WS varken interval güvenlik ağı
+    polling: { batchBlocks: 1000, intervalMs: INTERVAL_MS }, // with WS up, the interval is a safety net
   }));
 
   const worker = spawnWorker(configPath, databaseUrl, PORT);
   const t0 = performance.now();
   try {
     await waitFor('worker healthz up', async () => (await healthz(PORT)) !== null, 60_000);
-    // dinleme modu şart: WS bağlanmadıysa bench polling sayısı raporlamaz, düşer
+    // listening mode is mandatory: if WS never connected, the bench does not
+    // report polling numbers — it fails
     await waitFor(
-      'ws newHeads aboneliği (arclight_ws_connected=1)',
+      'ws newHeads subscription (arclight_ws_connected=1)',
       async () => ((await metricValue(PORT, 'arclight_ws_connected')) ?? 0) === 1,
       30_000,
       500,
     );
 
     await waitFor(
-      `pencerede ${SAMPLES} usdc transfer satırı`,
+      `${SAMPLES} usdc transfer rows in the window`,
       async () => {
         const h = await healthz(PORT);
         if (h?.phase === 'Degraded') throw new Error(`worker Degraded: ${h.lastError ?? '?'}`);
@@ -107,16 +108,16 @@ export async function run(databaseUrl: string): Promise<FreshnessResult> {
           const r = await db.query('SELECT count(*)::int AS n FROM idx_bench_fresh.usdc_transfer');
           return Number(r.rows[0]!.n) >= SAMPLES;
         } catch {
-          return false; // tablo bootstrap edilmemiş olabilir
+          return false; // the table may not be bootstrapped yet
         }
       },
       WINDOW_MS,
       1000,
     );
-    await new Promise((r) => setTimeout(r, 2000)); // kuyruk payı
+    await new Promise((r) => setTimeout(r, 2000)); // allowance for stragglers
 
     const wsStill = (await metricValue(PORT, 'arclight_ws_connected')) ?? 0;
-    if (wsStill !== 1) throw new Error('pencere sonunda WS bağlantısı kopuktu — koşu geçersiz');
+    if (wsStill !== 1) throw new Error('WS connection was down at the end of the window — run invalid');
     const headNotifications = (await metricValue(PORT, 'arclight_head_notifications_total')) ?? 0;
     const rpcErrors = (await metricValue(PORT, 'arclight_rpc_errors_total')) ?? 0;
 

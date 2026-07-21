@@ -74,7 +74,7 @@ function makeFake(
 }
 
 describe('reconcile', () => {
-  it('mutlu yol: 5 kaynak apply + Provisioned=True', async () => {
+  it('happy path: applies 5 resources + Provisioned=True', async () => {
     const kube = makeFake();
     await reconcile({ kube, workerImage: 'w:test', log }, makeCr());
     expect(kube.applied).toEqual([
@@ -93,7 +93,7 @@ describe('reconcile', () => {
     });
   });
 
-  it('ABI ConfigMap yoksa: apply yok, Provisioned=False/MissingAbiConfigMap', async () => {
+  it('missing ABI ConfigMap: no apply, Provisioned=False/MissingAbiConfigMap', async () => {
     const kube = makeFake({ cms: {} });
     await reconcile({ kube, workerImage: 'w:test', log }, makeCr());
     expect(kube.applied).toEqual([]);
@@ -103,21 +103,21 @@ describe('reconcile', () => {
     });
   });
 
-  it('ABI ConfigMap var ama anahtar yoksa: Provisioned=False', async () => {
-    const kube = makeFake({ cms: { 'emitter-abi': { 'baska.json': '[]' } } });
+  it('ABI ConfigMap exists but the key is missing: Provisioned=False', async () => {
+    const kube = makeFake({ cms: { 'emitter-abi': { 'other.json': '[]' } } });
     await reconcile({ kube, workerImage: 'w:test', log }, makeCr());
     expect(kube.applied).toEqual([]);
     expect(kube.statusPatches[0]!.conditions?.[0]!.reason).toBe('MissingAbiConfigMap');
   });
 
-  it('DSN Secret yoksa: Provisioned=False/MissingDsnSecret', async () => {
+  it('missing DSN Secret: Provisioned=False/MissingDsnSecret', async () => {
     const kube = makeFake({ secrets: {} });
     await reconcile({ kube, workerImage: 'w:test', log }, makeCr());
     expect(kube.applied).toEqual([]);
     expect(kube.statusPatches[0]!.conditions?.[0]!.reason).toBe('MissingDsnSecret');
   });
 
-  it('geçersiz spec: Provisioned=False/InvalidSpec', async () => {
+  it('invalid spec: Provisioned=False/InvalidSpec', async () => {
     const kube = makeFake();
     const cr = makeCr();
     (cr.spec as { contracts: unknown }).contracts = [];
@@ -126,7 +126,7 @@ describe('reconcile', () => {
     expect(kube.statusPatches[0]!.conditions?.[0]!.reason).toBe('InvalidSpec');
   });
 
-  it('status zaten güncelse tekrar patch atmaz (reconcile fırtınası koruması)', async () => {
+  it('does not re-patch when status is already up to date (reconcile storm protection)', async () => {
     const kube = makeFake();
     const cr = makeCr();
     cr.status = {
@@ -141,11 +141,11 @@ describe('reconcile', () => {
       ],
     };
     await reconcile({ kube, workerImage: 'w:test', log }, cr);
-    expect(kube.applied).toHaveLength(5); // kaynaklar yine apply edilir (SSA idempotent)
+    expect(kube.applied).toHaveLength(5); // resources are still applied (SSA is idempotent)
     expect(kube.statusPatches).toEqual([]);
   });
 
-  it('generation değiştiyse status yeniden patch\'lenir', async () => {
+  it('re-patches status when the generation changed', async () => {
     const kube = makeFake();
     const cr = makeCr();
     cr.metadata!.generation = 4;
@@ -165,7 +165,7 @@ describe('reconcile', () => {
     expect(kube.statusPatches[0]!.observedGeneration).toBe(4);
   });
 
-  it('aynı hata koşulu tekrar patch\'lenmez', async () => {
+  it('does not re-patch the same error condition', async () => {
     const kube = makeFake({ cms: {} });
     const cr = makeCr();
     cr.status = {
@@ -175,7 +175,7 @@ describe('reconcile', () => {
           type: 'Provisioned',
           status: 'False',
           reason: 'MissingAbiConfigMap',
-          message: 'ConfigMap emitter-abi/abi.json bulunamadı',
+          message: 'ConfigMap emitter-abi/abi.json not found',
           lastTransitionTime: '2026-07-06T00:00:00.000Z',
         },
       ],
@@ -184,7 +184,7 @@ describe('reconcile', () => {
     expect(kube.statusPatches).toEqual([]);
   });
 
-  it('metadata eksikse hiçbir çağrı yapmaz', async () => {
+  it('makes no calls when metadata is missing', async () => {
     const kube = makeFake();
     await reconcile({ kube, workerImage: 'w:test', log }, { metadata: {} } as Indexer);
     expect(kube.applied).toEqual([]);

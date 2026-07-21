@@ -14,7 +14,7 @@ jobs:
       - run: pnpm -r build
       - run: pnpm -r test
       - run: helm lint charts/arclight && helm template arclight charts/arclight > /dev/null
-      - name: install.yaml chart ile senkron mu
+      - name: install.yaml in sync with chart
         run: scripts/build-install.sh && git diff --exit-code install.yaml
   e2e:
     runs-on: ubuntu-latest

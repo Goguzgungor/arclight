@@ -15,7 +15,7 @@ const raw = {
 };
 
 describe('IndexerSpecSchema', () => {
-  it('varsayılanları doldurur', () => {
+  it('fills in defaults', () => {
     const spec = IndexerSpecSchema.parse(raw);
     expect(spec.network.finalityTag).toBe('finalized');
     expect(spec.storage.external.dsnSecretRef.key).toBe('url');
@@ -25,21 +25,21 @@ describe('IndexerSpecSchema', () => {
     expect(spec.polling).toEqual({ batchBlocks: 1000, intervalMs: 2000 });
   });
 
-  it('geçersiz adresi reddeder', () => {
+  it('rejects an invalid address', () => {
     const bad = { ...raw, contracts: [{ ...raw.contracts[0]!, address: '0x123' }] };
     expect(() => IndexerSpecSchema.parse(bad)).toThrow();
   });
 
-  it('DNS-uyumsuz contract adını reddeder', () => {
+  it('rejects a non-DNS-compliant contract name', () => {
     const bad = { ...raw, contracts: [{ ...raw.contracts[0]!, name: 'My_Token' }] };
     expect(() => IndexerSpecSchema.parse(bad)).toThrow();
   });
 
-  it('boş contracts listesini reddeder', () => {
+  it('rejects an empty contracts list', () => {
     expect(() => IndexerSpecSchema.parse({ ...raw, contracts: [] })).toThrow();
   });
 
-  it('rpc: ws:// ve wss:// URL kabul edilir', () => {
+  it('rpc: accepts ws:// and wss:// URLs', () => {
     const ok = {
       ...raw,
       network: { ...raw.network, rpc: ['wss://arc-testnet.drpc.org', 'ws://anvil:8545', 'https://x.example'] },
@@ -47,14 +47,29 @@ describe('IndexerSpecSchema', () => {
     expect(IndexerSpecSchema.safeParse(ok).success).toBe(true);
   });
 
-  it('rpc: http/ws dışı şema reddedilir', () => {
-    const bad = { ...raw, network: { ...raw.network, rpc: ['ftp://kotu.example'] } };
+  it('rpc: rejects schemes other than http/ws', () => {
+    const bad = { ...raw, network: { ...raw.network, rpc: ['ftp://bad.example'] } };
     expect(IndexerSpecSchema.safeParse(bad).success).toBe(false);
   });
 });
 
 describe('renderWorkerConfig', () => {
-  it('WorkerConfigSchema ile uyumlu config üretir', () => {
+  it('announceRpc passes through from the CR spec to the worker config as-is', () => {
+    const spec = IndexerSpecSchema.parse({
+      ...raw,
+      network: { ...raw.network, announceRpc: ['wss://rpc.testnet.arc.network'] },
+    });
+    const cfg = renderWorkerConfig('usdc-arc', spec);
+    expect(cfg.network.announceRpc).toEqual(['wss://rpc.testnet.arc.network']);
+  });
+
+  it('announceRpc defaults to an empty array when omitted', () => {
+    const cfg = renderWorkerConfig('usdc-arc', IndexerSpecSchema.parse(raw));
+    expect(cfg.network.announceRpc).toEqual([]);
+  });
+
+
+  it('produces a config compatible with WorkerConfigSchema', () => {
     const spec = IndexerSpecSchema.parse(raw);
     const cfg = renderWorkerConfig('usdc-arc', spec);
     expect(() => WorkerConfigSchema.parse(cfg)).not.toThrow();
@@ -65,11 +80,11 @@ describe('renderWorkerConfig', () => {
 });
 
 describe('configHash', () => {
-  it('deterministik ve girdiye duyarlıdır', () => {
+  it('is deterministic and sensitive to input', () => {
     const spec = IndexerSpecSchema.parse(raw);
     const a = configHash(renderWorkerConfig('usdc-arc', spec));
     const b = configHash(renderWorkerConfig('usdc-arc', spec));
-    const c = configHash(renderWorkerConfig('baska-ad', spec));
+    const c = configHash(renderWorkerConfig('other-name', spec));
     expect(a).toBe(b);
     expect(a).not.toBe(c);
     expect(a).toMatch(/^[0-9a-f]{16}$/);

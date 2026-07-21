@@ -50,11 +50,11 @@ describe('db', () => {
     await container.stop();
   });
 
-  it('bootstrap idempotent (iki kez çalışır)', async () => {
+  it('bootstrap is idempotent (runs twice)', async () => {
     const defs = extractEventDefs('usdc', ADDR, ABI);
     const tables = defs.map((d) => buildEventTable(SCHEMA, d));
     await bootstrap(pool, buildControlTables(SCHEMA), tables);
-    await bootstrap(pool, buildControlTables(SCHEMA), tables); // ikinci çağrı hata vermez
+    await bootstrap(pool, buildControlTables(SCHEMA), tables); // second call must not throw
     const r = await pool.query(
       `SELECT table_name FROM information_schema.tables WHERE table_schema = $1`, [SCHEMA],
     );
@@ -62,14 +62,14 @@ describe('db', () => {
       .toEqual(['_cursor', '_dead_letter', '_meta', 'usdc_transfer']);
   });
 
-  it('cursor: init yalnızca boşken yazar', async () => {
+  it('cursor: init only writes when empty', async () => {
     expect(await getCursor(pool, SCHEMA)).toBeNull();
     await initCursor(pool, SCHEMA, 9n);
-    await initCursor(pool, SCHEMA, 999n); // etkisiz
+    await initCursor(pool, SCHEMA, 999n); // no effect
     expect(await getCursor(pool, SCHEMA)).toBe(9n);
   });
 
-  it('commitBatch idempotent + cursor ilerletir', async () => {
+  it('commitBatch is idempotent + advances cursor', async () => {
     const first = await commitBatch(pool, SCHEMA, [row(10, 0), row(10, 1)], [], 10n);
     expect(first).toBe(2);
     const again = await commitBatch(pool, SCHEMA, [row(10, 0), row(10, 1)], [], 10n);
@@ -79,13 +79,13 @@ describe('db', () => {
     expect(count.rows[0].n).toBe(2);
   });
 
-  it('dead-letter aynı transaction içinde yazılır', async () => {
+  it('dead-letter is written within the same transaction', async () => {
     await commitBatch(pool, SCHEMA, [], [{
       blockNumber: 11n, txHash: '0x' + 'c'.repeat(64), logIndex: 0,
-      address: ADDR.toLowerCase(), topics: ['0xdead'], data: '0x01', error: 'decode hatası',
+      address: ADDR.toLowerCase(), topics: ['0xdead'], data: '0x01', error: 'decode error',
     }], 11n);
     const r = await pool.query(`SELECT error FROM "${SCHEMA}"._dead_letter`);
-    expect(r.rows[0].error).toBe('decode hatası');
+    expect(r.rows[0].error).toBe('decode error');
     expect(await getCursor(pool, SCHEMA)).toBe(11n);
   });
 });

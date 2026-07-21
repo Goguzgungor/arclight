@@ -1,0 +1,26 @@
+# FlowSwapAMM (Arc testnet, verified) — live DEX stream:
+# Swap / LiquidityAdded / LiquidityRemoved / PoolCreated, one table each.
+apiVersion: arclight.dev/v1alpha1
+kind: Indexer
+metadata:
+  name: flowswap
+spec:
+  network:
+    chainId: 5042002
+    rpc: ["wss://arc-testnet.drpc.org", "https://arc-testnet.drpc.org"]
+    announceRpc: ["wss://rpc.testnet.arc.network"]
+    finalityTag: latest
+  storage:
+    mode: External
+    external:
+      dsnSecretRef: { name: pg-dsn, key: url }
+  contracts:
+    - name: flowswap
+      address: "0x49f9636fe15883e16d5e356a4ea08c9fe6bc219b"
+      abi:
+        configMapRef: { name: flowswap-abi, key: abi.json }
+      startBlock: 52983000
+      events: [Swap, LiquidityAdded, LiquidityRemoved, PoolCreated]
+  polling:
+    batchBlocks: 1000
+    intervalMs: 2000

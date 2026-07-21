@@ -10,7 +10,7 @@ const VALID = {
 };
 
 describe('parseWorkerConfig', () => {
-  it('varsayılanları uygular', () => {
+  it('applies defaults', () => {
     const cfg = parseWorkerConfig(VALID);
     expect(cfg.polling.batchBlocks).toBe(1000);
     expect(cfg.polling.intervalMs).toBe(2000);
@@ -18,11 +18,11 @@ describe('parseWorkerConfig', () => {
     expect(cfg.contracts[0]!.startBlock).toBe(0);
     expect(cfg.contracts[0]!.events).toEqual([]);
   });
-  it('geçersiz adres reddedilir', () => {
+  it('rejects an invalid address', () => {
     const bad = { ...VALID, contracts: [{ ...VALID.contracts[0], address: 'xyz' }] };
     expect(() => parseWorkerConfig(bad)).toThrow();
   });
-  it('boş rpc listesi reddedilir', () => {
+  it('rejects an empty rpc list', () => {
     const bad = { ...VALID, network: { ...VALID.network, rpc: [] } };
     expect(() => parseWorkerConfig(bad)).toThrow();
   });
