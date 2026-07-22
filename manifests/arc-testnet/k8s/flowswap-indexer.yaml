@@ -17,6 +17,7 @@ spec:
   contracts:
     - name: flowswap
       address: "0x49f9636fe15883e16d5e356a4ea08c9fe6bc219b"
+      startBlock: -500   # last ~500 blocks: instant data, then live
       events: [Swap, LiquidityAdded, LiquidityRemoved, PoolCreated]
   polling:
     batchBlocks: 1000

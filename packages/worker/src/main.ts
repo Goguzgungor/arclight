@@ -8,6 +8,7 @@ import { createMetrics } from './metrics.js';
 import { bootstrapIndexer, runLoop, type PipelineDeps } from './pipeline.js';
 import { createRpc, filterHealthyRpcs, getFinalizedBlockNumber, splitRpcUrls } from './rpc.js';
 import { resolveContractAbi } from './abi.js';
+import { resolveStartBlock } from './blocks.js';
 import { startHealthServer } from './health.js';
 import { HeadSignal } from './signal.js';
 import { PhaseTracker } from './status.js';
@@ -40,12 +41,12 @@ async function main(): Promise<void> {
   const pool = new pg.Pool({ connectionString: dsn });
   const client = createRpc(rpcs);
 
-  // Contracts without a startBlock tail from the current head (no backfill):
-  // resolve that to a concrete block once, so the pipeline sees plain numbers.
-  if (cfg.contracts.some((c) => c.startBlock === undefined)) {
+  // Resolve head-relative/absent startBlocks to concrete blocks once, so the
+  // pipeline sees plain numbers (undefined -> head; negative -> head + n).
+  if (cfg.contracts.some((c) => c.startBlock === undefined || (c.startBlock ?? 0) < 0)) {
     const head = Number(await getFinalizedBlockNumber(client, cfg.network.finalityTag));
-    for (const c of cfg.contracts) if (c.startBlock === undefined) c.startBlock = head;
-    log.info({ head }, 'no startBlock given — tailing from current head');
+    for (const c of cfg.contracts) c.startBlock = resolveStartBlock(c.startBlock, head);
+    log.info({ head }, 'resolved head-relative startBlock(s)');
   }
 
   // Resolve each contract's ABI: mounted file > inline > explorer auto-fetch.

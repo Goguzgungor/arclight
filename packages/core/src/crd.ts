@@ -56,8 +56,8 @@ export const IndexerSpecSchema = z.object({
             inline: z.array(z.unknown()).optional(),
           })
           .optional(),
-        // omitted = start from the current chain head (tail live, no backfill)
-        startBlock: z.number().int().nonnegative().optional(),
+        // omitted = tail from head; negative = head-relative (last |n| blocks); >=0 = absolute
+        startBlock: z.number().int().optional(),
         events: z.array(z.string().min(1)).default([]),
       }),
     )

@@ -18,6 +18,7 @@ spec:
   contracts:
     - name: usdc
       address: "0x3600000000000000000000000000000000000000"
+      startBlock: -500   # last ~500 blocks: instant data, then live
       events: [Transfer]
   polling:
     batchBlocks: 1000

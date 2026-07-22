@@ -30,6 +30,7 @@ spec:
     # native USDC — ABI auto-fetched from the explorer, tails from head
     - name: usdc
       address: "0x3600000000000000000000000000000000000000"
+      startBlock: -500   # last ~500 blocks: instant data, then live
       events: [Transfer]
 ---
 apiVersion: arckive.org/v1alpha1
@@ -50,4 +51,5 @@ spec:
     # FlowSwapAMM (USDC↔EURC DEX) — ABI auto-fetched, tails from head
     - name: flowswap
       address: "0x49f9636fe15883e16d5e356a4ea08c9fe6bc219b"
+      startBlock: -500   # last ~500 blocks: instant data, then live
       events: [Swap, LiquidityAdded, LiquidityRemoved, PoolCreated]
