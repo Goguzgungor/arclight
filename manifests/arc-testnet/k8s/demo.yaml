@@ -1,0 +1,53 @@
+# Arckive demo — everything after the operator in ONE apply.
+#   kubectl apply -f https://arckive.org/install.yaml   # operator + CRD
+#   kubectl apply -f https://arckive.org/demo.yaml        # this file
+#
+# No ABI ConfigMaps (auto-fetched from the explorer) and no startBlock
+# (tails from the current head). Assumes an in-cluster Postgres reachable at
+# postgres.default.svc.cluster.local — bring your own DSN for real use.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pg-dsn
+stringData:
+  url: postgres://arckive:arckive@postgres.default.svc.cluster.local:5432/arckive
+---
+apiVersion: arckive.org/v1alpha1
+kind: Indexer
+metadata:
+  name: usdc-arc
+spec:
+  network:
+    chainId: 5042002
+    rpc: ["wss://arc-testnet.drpc.org", "https://arc-testnet.drpc.org"]
+    announceRpc: ["wss://rpc.testnet.arc.network"]
+    finalityTag: latest
+  storage:
+    mode: External
+    external:
+      dsnSecretRef: { name: pg-dsn, key: url }
+  contracts:
+    # native USDC — ABI auto-fetched from the explorer, tails from head
+    - name: usdc
+      address: "0x3600000000000000000000000000000000000000"
+      events: [Transfer]
+---
+apiVersion: arckive.org/v1alpha1
+kind: Indexer
+metadata:
+  name: flowswap
+spec:
+  network:
+    chainId: 5042002
+    rpc: ["wss://arc-testnet.drpc.org", "https://arc-testnet.drpc.org"]
+    announceRpc: ["wss://rpc.testnet.arc.network"]
+    finalityTag: latest
+  storage:
+    mode: External
+    external:
+      dsnSecretRef: { name: pg-dsn, key: url }
+  contracts:
+    # FlowSwapAMM (USDC↔EURC DEX) — ABI auto-fetched, tails from head
+    - name: flowswap
+      address: "0x49f9636fe15883e16d5e356a4ea08c9fe6bc219b"
+      events: [Swap, LiquidityAdded, LiquidityRemoved, PoolCreated]

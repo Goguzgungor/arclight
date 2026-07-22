@@ -6,7 +6,8 @@ import {
 } from '@arckive/core';
 import { createMetrics } from './metrics.js';
 import { bootstrapIndexer, runLoop, type PipelineDeps } from './pipeline.js';
-import { createRpc, filterHealthyRpcs, splitRpcUrls } from './rpc.js';
+import { createRpc, filterHealthyRpcs, getFinalizedBlockNumber, splitRpcUrls } from './rpc.js';
+import { resolveContractAbi } from './abi.js';
 import { startHealthServer } from './health.js';
 import { HeadSignal } from './signal.js';
 import { PhaseTracker } from './status.js';
@@ -26,11 +27,6 @@ async function main(): Promise<void> {
   const healthPort = Number(process.env['HEALTH_PORT'] ?? 9090);
   const server = startHealthServer(metrics, phase, healthPort);
 
-  const defs: EventDef[] = cfg.contracts.flatMap((c) => {
-    const abi = JSON.parse(readFileSync(c.abiPath, 'utf8')) as unknown;
-    return extractEventDefs(c.name, c.address, abi, c.events.length ? c.events : undefined);
-  });
-
   // Endpoints with a mismatched chainId or that are dead drop out of the pool;
   // if none remain, go Degraded and wait-retry
   let rpcs = await filterHealthyRpcs(cfg.network.rpc, cfg.network.chainId);
@@ -42,9 +38,29 @@ async function main(): Promise<void> {
   }
 
   const pool = new pg.Pool({ connectionString: dsn });
+  const client = createRpc(rpcs);
+
+  // Contracts without a startBlock tail from the current head (no backfill):
+  // resolve that to a concrete block once, so the pipeline sees plain numbers.
+  if (cfg.contracts.some((c) => c.startBlock === undefined)) {
+    const head = Number(await getFinalizedBlockNumber(client, cfg.network.finalityTag));
+    for (const c of cfg.contracts) if (c.startBlock === undefined) c.startBlock = head;
+    log.info({ head }, 'no startBlock given — tailing from current head');
+  }
+
+  // Resolve each contract's ABI: mounted file > inline > explorer auto-fetch.
+  const defs: EventDef[] = (
+    await Promise.all(
+      cfg.contracts.map(async (c) => {
+        const abi = await resolveContractAbi(c, cfg.network.explorerApi);
+        return extractEventDefs(c.name, c.address, abi, c.events.length ? c.events : undefined);
+      }),
+    )
+  ).flat();
+
   const headSignal = new HeadSignal();
   const deps: PipelineDeps = {
-    client: createRpc(rpcs),
+    client,
     pool,
     cfg,
     defs,

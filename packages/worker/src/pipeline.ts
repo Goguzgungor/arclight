@@ -26,9 +26,11 @@ export interface PipelineDeps {
 export async function bootstrapIndexer(deps: PipelineDeps): Promise<void> {
   const tables = deps.defs.map((d) => buildEventTable(deps.schema, d));
   await bootstrap(deps.pool, buildControlTables(deps.schema), tables);
+  // startBlock is resolved to a concrete number in main.ts (undefined -> head)
+  const startOf = (c: { startBlock?: number }) => BigInt(c.startBlock ?? 0);
   const minStart = deps.cfg.contracts.reduce(
-    (min, c) => (BigInt(c.startBlock) < min ? BigInt(c.startBlock) : min),
-    BigInt(deps.cfg.contracts[0]!.startBlock),
+    (min, c) => (startOf(c) < min ? startOf(c) : min),
+    startOf(deps.cfg.contracts[0]!),
   );
   await initCursor(deps.pool, deps.schema, minStart - 1n);
 }
@@ -58,7 +60,7 @@ export async function runOnce(deps: PipelineDeps): Promise<boolean> {
   phase.set('Backfilling');
 
   const byKey = new Map(defs.map((d) => [`${d.address}:${d.topic0}`, d]));
-  const startBlocks = new Map(cfg.contracts.map((c) => [c.address.toLowerCase(), BigInt(c.startBlock)]));
+  const startBlocks = new Map(cfg.contracts.map((c) => [c.address.toLowerCase(), BigInt(c.startBlock ?? 0)]));
   const addresses = [...new Set(defs.map((d) => d.address))];
 
   // Completeness guard: if the target came from the signal, the query node

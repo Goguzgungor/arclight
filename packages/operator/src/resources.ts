@@ -164,20 +164,26 @@ export function desiredResources(input: {
               },
               volumeMounts: [
                 { name: 'config', mountPath: '/etc/arckive/config', readOnly: true },
-                ...spec.contracts.map((c) => ({
-                  name: `abi-${c.name}`,
-                  mountPath: `${ABI_MOUNT_DIR}/${c.name}`,
-                  readOnly: true,
-                })),
+                // only contracts with a configMapRef get an ABI volume; others
+                // resolve their ABI inline or from the explorer at runtime
+                ...spec.contracts
+                  .filter((c) => c.abi?.configMapRef)
+                  .map((c) => ({
+                    name: `abi-${c.name}`,
+                    mountPath: `${ABI_MOUNT_DIR}/${c.name}`,
+                    readOnly: true,
+                  })),
               ],
             },
           ],
           volumes: [
             { name: 'config', configMap: { name: `${base}-config` } },
-            ...spec.contracts.map((c) => ({
-              name: `abi-${c.name}`,
-              configMap: { name: c.abi.configMapRef.name },
-            })),
+            ...spec.contracts
+              .filter((c) => c.abi?.configMapRef)
+              .map((c) => ({
+                name: `abi-${c.name}`,
+                configMap: { name: c.abi!.configMapRef!.name },
+              })),
           ],
         },
       },

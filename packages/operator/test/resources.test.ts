@@ -70,7 +70,7 @@ describe('desiredResources', () => {
     expect(c.readinessProbe?.httpGet?.path).toBe('/healthz');
   });
 
-  it('produces an ABI volume + mount for each contract', () => {
+  it('produces an ABI volume + mount only for contracts with a configMapRef', () => {
     const volumes = d.deployment.spec!.template.spec!.volumes!;
     expect(volumes.map((v) => v.name)).toEqual(['config', 'abi-emitter', 'abi-second']);
     const mounts = d.deployment.spec!.template.spec!.containers[0]!.volumeMounts!;
@@ -80,6 +80,19 @@ describe('desiredResources', () => {
       readOnly: true,
     });
     expect(volumes[2]!.configMap?.name).toBe('second-abi');
+  });
+
+  it('contracts without a configMapRef (explorer/inline) get no ABI volume or mount', () => {
+    const s = IndexerSpecSchema.parse({
+      network: { chainId: 5042002, rpc: ['https://arc-testnet.drpc.org'] },
+      storage: { mode: 'External', external: { dsnSecretRef: { name: 'pg-dsn' } } },
+      contracts: [{ name: 'usdc', address: ADDR }], // no abi -> explorer auto-fetch
+    });
+    const dd = desiredResources({ ...input, spec: s });
+    const volumes = dd.deployment.spec!.template.spec!.volumes!;
+    expect(volumes.map((v) => v.name)).toEqual(['config']); // no abi-* volume
+    const mounts = dd.deployment.spec!.template.spec!.containers[0]!.volumeMounts!;
+    expect(mounts.every((m) => !m.name.startsWith('abi-'))).toBe(true);
   });
 
   it('role can only patch its own CR status', () => {

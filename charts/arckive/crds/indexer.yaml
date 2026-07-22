@@ -59,6 +59,10 @@ spec:
                         type: string
                         pattern: '^wss?://'
                         description: "ws endpoints used only to listen for newHeads — never added to the query pool"
+                    explorerApi:
+                      type: string
+                      pattern: '^https?://'
+                      description: "Blockscout-style API base (…/api/v2) to auto-fetch verified ABIs; defaults per chainId"
                     finalityTag:
                       type: string
                       enum: [finalized, safe, latest]
@@ -88,7 +92,7 @@ spec:
                   minItems: 1
                   items:
                     type: object
-                    required: [name, address, abi]
+                    required: [name, address]
                     properties:
                       name:
                         type: string
@@ -98,7 +102,7 @@ spec:
                         pattern: "^0x[0-9a-fA-F]{40}$"
                       abi:
                         type: object
-                        required: [configMapRef]
+                        description: "ABI source; omit entirely to auto-fetch the verified ABI from the explorer by address"
                         properties:
                           configMapRef:
                             type: object
@@ -109,10 +113,16 @@ spec:
                               key:
                                 type: string
                                 default: abi.json
+                          inline:
+                            type: array
+                            description: "inline ABI (array of ABI entries)"
+                            items:
+                              type: object
+                              x-kubernetes-preserve-unknown-fields: true
                       startBlock:
                         type: integer
                         minimum: 0
-                        default: 0
+                        description: "omit to start from the current head (tail live, no backfill)"
                       events:
                         type: array
                         items:

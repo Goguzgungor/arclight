@@ -57,7 +57,8 @@ export async function reconcile(deps: ReconcileDeps, cr: Indexer): Promise<void>
   const spec = parsed.data;
 
   for (const c of spec.contracts) {
-    const ref = c.abi.configMapRef;
+    const ref = c.abi?.configMapRef;
+    if (!ref) continue; // inline / explorer-fetched ABI — nothing to validate here
     const cm = await deps.kube.getConfigMap(namespace, ref.name);
     if (!cm?.data?.[ref.key]) {
       await setCondition(
