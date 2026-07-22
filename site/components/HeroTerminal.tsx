@@ -134,7 +134,7 @@ export default function HeroTerminal() {
           {phase === "typing" && <span className="caret" />}
         </div>
         {phase !== "typing" && (
-          <div className="ok">indexer.arckive.dev/usdc-arc created</div>
+          <div className="ok">indexer.arckive.org/usdc-arc created</div>
         )}
         {phase !== "typing" && phase !== "created" && (
           <>
