@@ -19,8 +19,8 @@ describe('IndexerSpecSchema', () => {
     const spec = IndexerSpecSchema.parse(raw);
     expect(spec.network.finalityTag).toBe('finalized');
     expect(spec.storage.external.dsnSecretRef.key).toBe('url');
-    expect(spec.contracts[0]!.abi.configMapRef.key).toBe('abi.json');
-    expect(spec.contracts[0]!.startBlock).toBe(0);
+    expect(spec.contracts[0]!.abi?.configMapRef?.key).toBe('abi.json');
+    expect(spec.contracts[0]!.startBlock).toBeUndefined(); // omitted = tail from head
     expect(spec.contracts[0]!.events).toEqual([]);
     expect(spec.polling).toEqual({ batchBlocks: 1000, intervalMs: 2000 });
   });
@@ -76,6 +76,35 @@ describe('renderWorkerConfig', () => {
     expect(cfg.indexerName).toBe('usdc-arc');
     expect(cfg.contracts[0]!.abiPath).toBe('/etc/arckive/abis/usdc/abi.json');
     expect(cfg.network.finalityTag).toBe('finalized');
+  });
+
+  it('no abi -> no abiPath, explorerApi defaults from chainId', () => {
+    const spec = IndexerSpecSchema.parse({ ...raw, contracts: [{ name: 'usdc', address: ADDR }] });
+    const cfg = renderWorkerConfig('usdc-arc', spec);
+    expect(cfg.contracts[0]!.abiPath).toBeUndefined();
+    expect(cfg.contracts[0]!.abiInline).toBeUndefined();
+    expect(cfg.network.explorerApi).toBe('https://testnet.arcscan.app/api/v2');
+    expect(() => WorkerConfigSchema.parse(cfg)).not.toThrow();
+  });
+
+  it('inline abi -> abiInline, no abiPath', () => {
+    const abi = [{ type: 'event', name: 'Transfer', inputs: [] }];
+    const spec = IndexerSpecSchema.parse({
+      ...raw,
+      contracts: [{ name: 'usdc', address: ADDR, abi: { inline: abi } }],
+    });
+    const cfg = renderWorkerConfig('usdc-arc', spec);
+    expect(cfg.contracts[0]!.abiInline).toEqual(abi);
+    expect(cfg.contracts[0]!.abiPath).toBeUndefined();
+  });
+
+  it('explicit explorerApi overrides the chainId default', () => {
+    const spec = IndexerSpecSchema.parse({
+      ...raw,
+      network: { ...raw.network, explorerApi: 'https://custom.example/api/v2' },
+      contracts: [{ name: 'usdc', address: ADDR }],
+    });
+    expect(renderWorkerConfig('x', spec).network.explorerApi).toBe('https://custom.example/api/v2');
   });
 });
 

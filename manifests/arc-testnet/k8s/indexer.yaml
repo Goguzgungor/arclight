@@ -1,6 +1,6 @@
 # Arc testnet native USDC — live Transfer stream (third-party traffic).
-# Set startBlock near the current head: check eth_blockNumber and start
-# ~2000 blocks back to make the backfill visible.
+# No abi (auto-fetched from the explorer) and no startBlock (tails from head).
+# To watch a visible backfill instead, add e.g. `startBlock: <head-2000>`.
 apiVersion: arckive.org/v1alpha1
 kind: Indexer
 metadata:
@@ -18,9 +18,6 @@ spec:
   contracts:
     - name: usdc
       address: "0x3600000000000000000000000000000000000000"
-      abi:
-        configMapRef: { name: usdc-abi, key: abi.json }
-      startBlock: 52983000
       events: [Transfer]
   polling:
     batchBlocks: 1000

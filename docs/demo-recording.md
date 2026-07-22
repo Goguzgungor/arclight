@@ -42,41 +42,31 @@ that is the "where Circle tech is used" answer.
 
 ---
 
-## Part B — Live demo (run in a terminal, on camera)
+## Part B — Live demo (two commands, on camera)
 
-Run these from the repo root (`~/Documents/projects/arckive`). The operator
-image pulls from GHCR on first apply (~20–40 s); `rollout status` waits for it.
+The operator image pulls from GHCR on first apply (~20–40 s); `rollout status`
+waits for it. Postgres is assumed already running (your own database).
 
 ```bash
-# 1) THE one command — installs Namespace + CRD + operator, fresh
+# 1) Install the operator + CRD
 kubectl apply -f https://arckive.org/install.yaml
 kubectl -n arckive-system rollout status deploy/arckive-operator
 
-# 2) Bring your prerequisites: DB connection secret + contract ABIs
-kubectl create secret generic pg-dsn \
-  --from-literal=url='postgres://arckive:arckive@postgres.default.svc.cluster.local:5432/arckive'
-kubectl create configmap usdc-abi     --from-file=abi.json=manifests/arc-testnet/usdc-abi.json
-kubectl create configmap flowswap-abi --from-file=abi.json=manifests/arc-testnet/flowswap-abi.json
+# 2) DSN Secret + both Indexers in one apply — no ABI ConfigMaps
+#    (ABIs auto-fetched from the explorer; no startBlock = tail from head)
+kubectl apply -f https://arckive.org/demo.yaml
 
-# 3) Declare the indexers — recent startBlock so the backfill is short & visible
-HEAD=$(curl -s -X POST -H 'content-type: application/json' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]}' \
-  https://arc-testnet.drpc.org | python3 -c "import sys,json;print(int(json.load(sys.stdin)['result'],16))")
-sed "s/startBlock: 52983000/startBlock: $((HEAD-400))/" manifests/arc-testnet/k8s/indexer.yaml          | kubectl apply -f -
-sed "s/startBlock: 52983000/startBlock: $((HEAD-400))/" manifests/arc-testnet/k8s/flowswap-indexer.yaml | kubectl apply -f -
-
-# 4) Watch them go Live (Provisioning -> Backfilling -> Live, lag -> 0)
+# Watch them go Live, then live rows land in Postgres
 kubectl get indexers -w
 ```
 
-Expected on screen:
+Expected on screen — because they tail from head, they reach Live almost
+immediately and then new USDC/EURC events stream in:
 
 ```
-NAME       PHASE         CURRENT    HEAD       LAG
-usdc-arc   Backfilling   53066120   53066520   400
-flowswap   Backfilling   53066120   53066520   400
-usdc-arc   Live          53066520   53066520   0
-flowswap   Live          53066520   53066520   0
+NAME       PHASE   CURRENT    HEAD       LAG
+usdc-arc   Live    53066520   53066520   0
+flowswap   Live    53066520   53066520   0
 ```
 
 ---

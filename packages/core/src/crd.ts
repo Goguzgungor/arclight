@@ -5,6 +5,12 @@ import { RpcUrlSchema, WorkerConfigSchema, type WorkerConfig } from './config.js
 export const ABI_MOUNT_DIR = '/etc/arckive/abis';
 export const CONFIG_MOUNT_PATH = '/etc/arckive/config/config.json';
 
+// Known Blockscout-style explorer APIs, used to auto-fetch verified ABIs when a
+// contract provides no abi. Overridable per-CR via network.explorerApi.
+export const DEFAULT_EXPLORER_API: Record<number, string> = {
+  5042002: 'https://testnet.arcscan.app/api/v2', // Arc testnet
+};
+
 export const IndexerSpecSchema = z.object({
   network: z.object({
     chainId: z.number().int().positive(),
@@ -14,6 +20,9 @@ export const IndexerSpecSchema = z.object({
     announceRpc: z
       .array(z.string().regex(/^wss?:\/\//i, 'announceRpc must be ws(s):// only'))
       .default([]),
+    // Blockscout-style API base for auto-fetching verified ABIs; falls back to
+    // DEFAULT_EXPLORER_API[chainId] when omitted.
+    explorerApi: z.string().regex(/^https?:\/\//i, 'explorerApi must be http(s)://').optional(),
     finalityTag: z.enum(['finalized', 'safe', 'latest']).default('finalized'),
   }),
   storage: z.object({
@@ -33,13 +42,22 @@ export const IndexerSpecSchema = z.object({
           .string()
           .regex(/^[a-z][a-z0-9-]{0,29}$/, 'contract name: lowercase letters, digits, hyphens; starts with a letter; <=30'),
         address: z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'invalid EVM address'),
-        abi: z.object({
-          configMapRef: z.object({
-            name: z.string().min(1),
-            key: z.string().min(1).default('abi.json'),
-          }),
-        }),
-        startBlock: z.number().int().nonnegative().default(0),
+        // ABI source (all optional): configMapRef (mounted file) or inline. When
+        // abi is omitted entirely, the worker auto-fetches the verified ABI from
+        // the explorer by address.
+        abi: z
+          .object({
+            configMapRef: z
+              .object({
+                name: z.string().min(1),
+                key: z.string().min(1).default('abi.json'),
+              })
+              .optional(),
+            inline: z.array(z.unknown()).optional(),
+          })
+          .optional(),
+        // omitted = start from the current chain head (tail live, no backfill)
+        startBlock: z.number().int().nonnegative().optional(),
         events: z.array(z.string().min(1)).default([]),
       }),
     )
@@ -75,16 +93,22 @@ export interface IndexerStatus {
 }
 
 export function renderWorkerConfig(crName: string, spec: IndexerSpec): WorkerConfig {
+  const explorerApi = spec.network.explorerApi ?? DEFAULT_EXPLORER_API[spec.network.chainId];
   return WorkerConfigSchema.parse({
     indexerName: crName,
-    network: spec.network,
-    contracts: spec.contracts.map((c) => ({
-      name: c.name,
-      address: c.address,
-      abiPath: `${ABI_MOUNT_DIR}/${c.name}/${c.abi.configMapRef.key}`,
-      startBlock: c.startBlock,
-      events: c.events,
-    })),
+    network: { ...spec.network, ...(explorerApi ? { explorerApi } : {}) },
+    contracts: spec.contracts.map((c) => {
+      const cm = c.abi?.configMapRef;
+      return {
+        name: c.name,
+        address: c.address,
+        // configMapRef -> mounted file; else inline; else nothing (worker fetches from explorer)
+        ...(cm ? { abiPath: `${ABI_MOUNT_DIR}/${c.name}/${cm.key}` } : {}),
+        ...(c.abi?.inline ? { abiInline: c.abi.inline } : {}),
+        ...(c.startBlock !== undefined ? { startBlock: c.startBlock } : {}),
+        events: c.events,
+      };
+    }),
     polling: spec.polling,
   });
 }

@@ -53,19 +53,21 @@ jobs:
             gh release create latest --title "latest" \
               --notes "Rolling release: latest main. Install: kubectl apply -f https://arckive.org/install.yaml"
           gh release upload latest install.yaml --clobber
-      - name: sync install.yaml to site-landing (served at arckive.org)
+      - name: sync install.yaml + demo.yaml to site-landing (served at arckive.org)
         run: |
           cp install.yaml "$RUNNER_TEMP/install.yaml"
+          cp manifests/arc-testnet/k8s/demo.yaml "$RUNNER_TEMP/demo.yaml"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin site-landing
           git checkout site-landing
           mkdir -p site/public
           cp "$RUNNER_TEMP/install.yaml" site/public/install.yaml
-          if ! git diff --quiet -- site/public/install.yaml || [ -n "$(git status --porcelain site/public/install.yaml)" ]; then
-            git add site/public/install.yaml
-            git commit -m "site: update install.yaml (main ${GITHUB_SHA:0:7})"
+          cp "$RUNNER_TEMP/demo.yaml" site/public/demo.yaml
+          if [ -n "$(git status --porcelain site/public/install.yaml site/public/demo.yaml)" ]; then
+            git add site/public/install.yaml site/public/demo.yaml
+            git commit -m "site: update install.yaml + demo.yaml (main ${GITHUB_SHA:0:7})"
             git push origin site-landing
           else
-            echo "install.yaml unchanged, skipping site push"
+            echo "install.yaml + demo.yaml unchanged, skipping site push"
           fi

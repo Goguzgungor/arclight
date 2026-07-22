@@ -16,7 +16,7 @@ Arc RPCs ──WS newHeads + poll fallback──▶ [ Worker ] ──single tx�
                                           └──status patch──▶ Indexer .status
 ```
 
-## Quickstart (3 YAMLs)
+## Quickstart (2 commands)
 
 Prerequisites: a running Kubernetes cluster and a reachable Postgres.
 
@@ -24,16 +24,20 @@ Prerequisites: a running Kubernetes cluster and a reachable Postgres.
 # 1) Install the operator (CRD included)
 kubectl apply -f https://arckive.org/install.yaml
 
-# 2) DSN Secret + ABI ConfigMap + Indexer CR
-kubectl create secret generic pg-dsn --from-literal=url='postgres://user:pass@host:5432/db'
-kubectl create configmap usdc-abi --from-file=abi.json=manifests/arc-testnet/usdc-abi.json
-kubectl apply -f manifests/arc-testnet/k8s/indexer.yaml
+# 2) DSN Secret + Indexers — no ABI ConfigMaps (auto-fetched from the explorer)
+kubectl apply -f https://arckive.org/demo.yaml
 
-# 3) Watch
+# Watch
 kubectl get indexers
 # NAME       PHASE   CURRENT   HEAD      LAG
 # usdc-arc   Live    8123456   8123456   0
 ```
+
+Each contract's ABI is auto-fetched from the chain's block explorer by address
+(override with `abi.configMapRef` or `abi.inline`). Omitting `startBlock` tails
+from the current head; set it to backfill from a specific block. The demo bundle
+(`manifests/arc-testnet/k8s/demo.yaml`) is a Secret + two Indexers; write your
+own for real use.
 
 `install.yaml` is generated from the chart by `scripts/build-install.sh`
 (Namespace + CRD + operator; images

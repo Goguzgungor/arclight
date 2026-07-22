@@ -12,8 +12,13 @@ export const RpcUrlSchema = z
 export const ContractConfigSchema = z.object({
   name: z.string().min(1),
   address: z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'invalid EVM address'),
-  abiPath: z.string().min(1),
-  startBlock: z.number().int().nonnegative().default(0),
+  // ABI source, resolved in order: abiPath (mounted file) > abiInline >
+  // network.explorerApi (auto-fetch the verified ABI by address). All optional;
+  // the worker errors at startup if none of the three yields an ABI.
+  abiPath: z.string().min(1).optional(),
+  abiInline: z.array(z.unknown()).optional(),
+  // omitted = start from the current chain head (tail live, no backfill)
+  startBlock: z.number().int().nonnegative().optional(),
   events: z.array(z.string().min(1)).default([]),
 });
 
@@ -27,6 +32,9 @@ export const WorkerConfigSchema = z.object({
     announceRpc: z
       .array(z.string().regex(/^wss?:\/\//i, 'announceRpc must be ws(s):// only'))
       .default([]),
+    // Blockscout-style API base (…/api/v2) used to auto-fetch verified contract
+    // ABIs when a contract provides no abiPath/abiInline.
+    explorerApi: z.string().regex(/^https?:\/\//i, 'explorerApi must be http(s)://').optional(),
     finalityTag: z.enum(['finalized', 'safe', 'latest']).default('finalized'),
   }),
   contracts: z.array(ContractConfigSchema).min(1),
