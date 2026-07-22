@@ -131,8 +131,7 @@ spec:
                               x-kubernetes-preserve-unknown-fields: true
                       startBlock:
                         type: integer
-                        minimum: 0
-                        description: "omit to start from the current head (tail live, no backfill)"
+                        description: "omit = tail from head; negative = last |n| blocks (head-relative); >=0 = absolute block"
                       events:
                         type: array
                         items:
