@@ -368,7 +368,7 @@ export default function Page() {
           <div className="sec-label">Get started</div>
           <h2>One YAML. A running indexer.</h2>
           <p>Runs in your cluster. Your data never leaves it.</p>
-          <CopyCmd cmd="kubectl apply -f arckive.dev/install.yaml" />
+          <CopyCmd cmd="kubectl apply -f arckive.org/install.yaml" />
           <div className="meta-line cta-meta">
             runs in your cluster · apache-2.0 · v1alpha1
           </div>
