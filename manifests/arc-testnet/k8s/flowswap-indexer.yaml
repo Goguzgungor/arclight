@@ -1,6 +1,6 @@
 # FlowSwapAMM (Arc testnet, verified) — live DEX stream:
 # Swap / LiquidityAdded / LiquidityRemoved / PoolCreated, one table each.
-apiVersion: arclight.dev/v1alpha1
+apiVersion: arckive.org/v1alpha1
 kind: Indexer
 metadata:
   name: flowswap

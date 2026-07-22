@@ -4,7 +4,7 @@ import type { PublicClient } from 'viem';
 import {
   buildControlTables, buildEventTable, decodeLogToRow, planRange,
   type DecodedRow, type EventDef, type RawLog, type WorkerConfig,
-} from '@arclight/core';
+} from '@arckive/core';
 import { bootstrap, commitBatch, getCursor, initCursor, type DeadLetterEntry } from './db.js';
 import { fetchLogs, getBlockTimes, getFinalizedBlockNumber } from './rpc.js';
 import type { Metrics } from './metrics.js';

@@ -292,7 +292,7 @@ export function render(results: Results): string {
   ${backfillSection(results.backfill)}
   ${burstSection(results.burst)}
   <div class="meta">
-    <strong>Methodology.</strong> Each scenario spawns the actual <code>arclight-worker</code> binary and
+    <strong>Methodology.</strong> Each scenario spawns the actual <code>arckive-worker</code> binary and
     observes it only through Postgres rows and its Prometheus <code>/metrics</code> endpoint — the same
     surface you would monitor in production. Freshness = <code>_ingested_at − block_time</code>
     per row, where <code>block_time</code> is the validator timestamp and <code>_ingested_at</code>
@@ -300,7 +300,7 @@ export function render(results: Results): string {
     WS-hybrid mode: an <code>eth_subscribe(newHeads)</code> subscription triggers an immediate fetch
     round the moment a block is announced, and interval polling remains only as a safety net — the
     run is invalidated unless the WS connection stayed up for the whole window
-    (<code>arclight_ws_connected</code>). Arc testnet RPC: drpc.org public endpoint. Reproduce with
+    (<code>arckive_ws_connected</code>). Arc testnet RPC: drpc.org public endpoint. Reproduce with
     <code>pnpm bench</code> · Node ${esc(results.meta.node)}.
   </div>
 </div>`;

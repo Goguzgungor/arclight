@@ -4,7 +4,7 @@ import { load } from 'js-yaml';
 import { describe, expect, it } from 'vitest';
 
 const path = fileURLToPath(
-  new URL('../../../charts/arclight/crds/indexer.yaml', import.meta.url),
+  new URL('../../../charts/arckive/crds/indexer.yaml', import.meta.url),
 );
 
 interface CrdDoc {
@@ -27,8 +27,8 @@ describe('Indexer CRD manifest', () => {
   const v = crd.spec.versions[0]!;
 
   it('GVK and scope are correct', () => {
-    expect(crd.metadata.name).toBe('indexers.arclight.dev');
-    expect(crd.spec.group).toBe('arclight.dev');
+    expect(crd.metadata.name).toBe('indexers.arckive.org');
+    expect(crd.spec.group).toBe('arckive.org');
     expect(crd.spec.scope).toBe('Namespaced');
     expect(crd.spec.names).toMatchObject({ kind: 'Indexer', plural: 'indexers' });
     expect(v.name).toBe('v1alpha1');

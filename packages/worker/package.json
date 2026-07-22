@@ -1,5 +1,5 @@
 {
-  "name": "@arclight/worker",
+  "name": "@arckive/worker",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
@@ -11,7 +11,7 @@
     "bench:report": "node --experimental-strip-types scripts/bench/report.ts"
   },
   "dependencies": {
-    "@arclight/core": "workspace:*",
+    "@arckive/core": "workspace:*",
     "pg": "^8.16.0",
     "pino": "^9.7.0",
     "prom-client": "^15.1.3",

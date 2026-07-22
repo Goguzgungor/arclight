@@ -4,7 +4,7 @@ import {
   configHash,
   renderWorkerConfig,
   type IndexerSpec,
-} from '@arclight/core';
+} from '@arckive/core';
 import type { kind } from 'kubernetes-fluent-client';
 
 export interface OwnerRef {
@@ -22,7 +22,7 @@ export interface DesiredResources {
 }
 
 export function workerResourceName(crName: string): string {
-  const name = `arclight-${crName}`;
+  const name = `arckive-${crName}`;
   if (name.length > 63) throw new Error(`resource name exceeds 63 characters: ${name}`);
   return name;
 }
@@ -30,7 +30,7 @@ export function workerResourceName(crName: string): string {
 function ownerReferences(owner: OwnerRef) {
   return [
     {
-      apiVersion: 'arclight.dev/v1alpha1',
+      apiVersion: 'arckive.org/v1alpha1',
       kind: 'Indexer',
       name: owner.name,
       uid: owner.uid,
@@ -42,9 +42,9 @@ function ownerReferences(owner: OwnerRef) {
 
 function labels(crName: string): Record<string, string> {
   return {
-    'app.kubernetes.io/name': 'arclight-worker',
+    'app.kubernetes.io/name': 'arckive-worker',
     'app.kubernetes.io/instance': crName,
-    'app.kubernetes.io/managed-by': 'arclight-operator',
+    'app.kubernetes.io/managed-by': 'arckive-operator',
   };
 }
 
@@ -85,7 +85,7 @@ export function desiredResources(input: {
     metadata: meta(`${base}-status`),
     rules: [
       {
-        apiGroups: ['arclight.dev'],
+        apiGroups: ['arckive.org'],
         resources: ['indexers/status'],
         verbs: ['patch'],
         resourceNames: [owner.name],
@@ -114,14 +114,14 @@ export function desiredResources(input: {
       strategy: { type: 'Recreate' },
       selector: {
         matchLabels: {
-          'app.kubernetes.io/name': 'arclight-worker',
+          'app.kubernetes.io/name': 'arckive-worker',
           'app.kubernetes.io/instance': owner.name,
         },
       },
       template: {
         metadata: {
           labels: labels(owner.name),
-          annotations: { 'arclight.dev/config-hash': hash },
+          annotations: { 'arckive.org/config-hash': hash },
         },
         spec: {
           serviceAccountName: base,
@@ -163,7 +163,7 @@ export function desiredResources(input: {
                 limits: { memory: '512Mi' },
               },
               volumeMounts: [
-                { name: 'config', mountPath: '/etc/arclight/config', readOnly: true },
+                { name: 'config', mountPath: '/etc/arckive/config', readOnly: true },
                 ...spec.contracts.map((c) => ({
                   name: `abi-${c.name}`,
                   mountPath: `${ABI_MOUNT_DIR}/${c.name}`,

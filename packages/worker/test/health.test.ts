@@ -23,10 +23,10 @@ describe('health + metrics', () => {
     phase.set('Live');
   });
 
-  it('/metrics: arclight metrics carry the indexer label', async () => {
+  it('/metrics: arckive metrics carry the indexer label', async () => {
     metrics.eventsIngested.inc(5);
     const body = await (await fetch(`http://127.0.0.1:${port()}/metrics`)).text();
-    expect(body).toContain('arclight_events_ingested_total{indexer="demo"} 5');
-    expect(body).toContain('arclight_blocks_behind');
+    expect(body).toContain('arckive_events_ingested_total{indexer="demo"} 5');
+    expect(body).toContain('arckive_blocks_behind');
   });
 });

@@ -14,14 +14,14 @@ spec:
         - name: postgres
           image: postgres:17-alpine
           env:
-            - { name: POSTGRES_USER, value: arclight }
-            - { name: POSTGRES_PASSWORD, value: arclight }
-            - { name: POSTGRES_DB, value: arclight }
+            - { name: POSTGRES_USER, value: arckive }
+            - { name: POSTGRES_PASSWORD, value: arckive }
+            - { name: POSTGRES_DB, value: arckive }
           ports:
             - containerPort: 5432
           readinessProbe:
             exec:
-              command: [pg_isready, -U, arclight]
+              command: [pg_isready, -U, arckive]
             periodSeconds: 2
 ---
 apiVersion: v1

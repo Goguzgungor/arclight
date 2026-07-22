@@ -10,7 +10,7 @@ const kubectl = (...args: string[]) => sh('kubectl', args);
 const psqlCount = () =>
   kubectl(
     'exec', 'deploy/postgres', '--',
-    'psql', '-U', 'arclight', '-t', '-A', '-c',
+    'psql', '-U', 'arckive', '-t', '-A', '-c',
     'select count(*) from idx_demo.emitter_ping',
   );
 
@@ -36,7 +36,7 @@ beforeAll(async () => {
     60_000,
     1_000,
   );
-  await sh('pnpm', ['--filter', '@arclight/worker', 'demo:seed'], { cwd: REPO });
+  await sh('pnpm', ['--filter', '@arckive/worker', 'demo:seed'], { cwd: REPO });
   portForward.kill();
 });
 
@@ -70,7 +70,7 @@ describe('kind e2e', () => {
     await retry(
       async () => {
         try {
-          await kubectl('get', 'deploy', 'arclight-demo');
+          await kubectl('get', 'deploy', 'arckive-demo');
           return 'present';
         } catch {
           return 'gone';

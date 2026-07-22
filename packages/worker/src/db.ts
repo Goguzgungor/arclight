@@ -1,5 +1,5 @@
 import pg from 'pg';
-import type { DecodedRow, TableSpec } from '@arclight/core';
+import type { DecodedRow, TableSpec } from '@arckive/core';
 
 const q = (id: string) => `"${id}"`;
 

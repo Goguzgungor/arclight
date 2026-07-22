@@ -1,5 +1,5 @@
 import { GenericKind, RegisterKind } from 'kubernetes-fluent-client';
-import type { IndexerSpec, IndexerStatus } from '@arclight/core';
+import type { IndexerSpec, IndexerStatus } from '@arckive/core';
 
 export class Indexer extends GenericKind {
   spec?: IndexerSpec;
@@ -7,7 +7,7 @@ export class Indexer extends GenericKind {
 }
 
 RegisterKind(Indexer, {
-  group: 'arclight.dev',
+  group: 'arckive.org',
   version: 'v1alpha1',
   kind: 'Indexer',
   plural: 'indexers',

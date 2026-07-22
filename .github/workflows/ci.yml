@@ -13,7 +13,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm -r build
       - run: pnpm -r test
-      - run: helm lint charts/arclight && helm template arclight charts/arclight > /dev/null
+      - run: helm lint charts/arckive && helm template arckive charts/arckive > /dev/null
       - name: install.yaml in sync with chart
         run: scripts/build-install.sh && git diff --exit-code install.yaml
   e2e:
@@ -26,7 +26,7 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
       - uses: helm/kind-action@v1
         with:
-          cluster_name: arclight-e2e
+          cluster_name: arckive-e2e
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
       - run: pnpm e2e

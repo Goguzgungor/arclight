@@ -8,8 +8,8 @@ COPY packages/operator/package.json packages/operator/
 RUN pnpm install --frozen-lockfile
 COPY packages ./packages
 RUN pnpm -r build \
-  && pnpm --filter @arclight/worker deploy --legacy --prod /out/worker \
-  && pnpm --filter @arclight/operator deploy --legacy --prod /out/operator
+  && pnpm --filter @arckive/worker deploy --legacy --prod /out/worker \
+  && pnpm --filter @arckive/operator deploy --legacy --prod /out/operator
 
 FROM node:22-slim AS worker
 WORKDIR /app

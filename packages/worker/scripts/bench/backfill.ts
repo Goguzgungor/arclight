@@ -66,8 +66,8 @@ export async function run(databaseUrl: string): Promise<BackfillResult> {
       'backfill reached Live',
       async () => {
         const h = await healthz(PORT);
-        const block = (await metricValue(PORT, 'arclight_last_processed_block')) ?? 0;
-        const events = (await metricValue(PORT, 'arclight_events_ingested_total')) ?? 0;
+        const block = (await metricValue(PORT, 'arckive_last_processed_block')) ?? 0;
+        const events = (await metricValue(PORT, 'arckive_events_ingested_total')) ?? 0;
         if (block > 0) series.push({ tMs: Math.round(performance.now() - t0), block, events });
         if (h?.phase === 'Degraded') throw new Error(`worker Degraded: ${h.lastError ?? '?'}`);
         return h?.phase === 'Live';
@@ -79,7 +79,7 @@ export async function run(databaseUrl: string): Promise<BackfillResult> {
     const durationMs = Math.round(performance.now() - t0);
     const last = series[series.length - 1]!;
     const processed = last.block - startBlock + 1;
-    const rpcErrors = (await metricValue(PORT, 'arclight_rpc_errors_total')) ?? 0;
+    const rpcErrors = (await metricValue(PORT, 'arckive_rpc_errors_total')) ?? 0;
     const span = await db.query(
       `SELECT EXTRACT(EPOCH FROM (max(block_time) - min(block_time))) AS sec
          FROM idx_bench_backfill.usdc_transfer`,

@@ -1,4 +1,4 @@
-apiVersion: arclight.dev/v1alpha1
+apiVersion: arckive.org/v1alpha1
 kind: Indexer
 metadata:
   name: demo

@@ -7,7 +7,7 @@ describe('Indexer kind registration', () => {
     expect(new Indexer()).toBeInstanceOf(GenericKind);
     const gvk = modelToGroupVersionKind(Indexer.name);
     expect(gvk).toMatchObject({
-      group: 'arclight.dev',
+      group: 'arckive.org',
       version: 'v1alpha1',
       kind: 'Indexer',
       plural: 'indexers',

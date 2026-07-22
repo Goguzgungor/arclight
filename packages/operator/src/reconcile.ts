@@ -1,5 +1,5 @@
 import type { Logger } from 'pino';
-import { IndexerSpecSchema, type IndexerCondition } from '@arclight/core';
+import { IndexerSpecSchema, type IndexerCondition } from '@arckive/core';
 import type { Indexer } from './kinds.js';
 import type { KubeApi } from './kube.js';
 import { desiredResources } from './resources.js';

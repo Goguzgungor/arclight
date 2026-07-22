@@ -58,7 +58,7 @@ async function main(): Promise<void> {
   };
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
-  log.info({ workerImage, resyncMs }, 'arclight operator started');
+  log.info({ workerImage, resyncMs }, 'arckive operator started');
 }
 
 main().catch((err: unknown) => {

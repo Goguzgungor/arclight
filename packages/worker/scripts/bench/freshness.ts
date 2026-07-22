@@ -93,8 +93,8 @@ export async function run(databaseUrl: string): Promise<FreshnessResult> {
     // listening mode is mandatory: if WS never connected, the bench does not
     // report polling numbers — it fails
     await waitFor(
-      'ws newHeads subscription (arclight_ws_connected=1)',
-      async () => ((await metricValue(PORT, 'arclight_ws_connected')) ?? 0) === 1,
+      'ws newHeads subscription (arckive_ws_connected=1)',
+      async () => ((await metricValue(PORT, 'arckive_ws_connected')) ?? 0) === 1,
       30_000,
       500,
     );
@@ -116,10 +116,10 @@ export async function run(databaseUrl: string): Promise<FreshnessResult> {
     );
     await new Promise((r) => setTimeout(r, 2000)); // allowance for stragglers
 
-    const wsStill = (await metricValue(PORT, 'arclight_ws_connected')) ?? 0;
+    const wsStill = (await metricValue(PORT, 'arckive_ws_connected')) ?? 0;
     if (wsStill !== 1) throw new Error('WS connection was down at the end of the window — run invalid');
-    const headNotifications = (await metricValue(PORT, 'arclight_head_notifications_total')) ?? 0;
-    const rpcErrors = (await metricValue(PORT, 'arclight_rpc_errors_total')) ?? 0;
+    const headNotifications = (await metricValue(PORT, 'arckive_head_notifications_total')) ?? 0;
+    const rpcErrors = (await metricValue(PORT, 'arckive_rpc_errors_total')) ?? 0;
 
     const rows = await db.query(
       `SELECT EXTRACT(EPOCH FROM (_ingested_at - block_time)) * 1000 AS ms, block_number

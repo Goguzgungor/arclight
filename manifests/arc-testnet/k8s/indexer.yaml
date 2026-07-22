@@ -1,7 +1,7 @@
 # Arc testnet native USDC — live Transfer stream (third-party traffic).
 # Set startBlock near the current head: check eth_blockNumber and start
 # ~2000 blocks back to make the backfill visible.
-apiVersion: arclight.dev/v1alpha1
+apiVersion: arckive.org/v1alpha1
 kind: Indexer
 metadata:
   name: usdc-arc
@@ -9,7 +9,6 @@ spec:
   network:
     chainId: 5042002
     rpc: ["wss://arc-testnet.drpc.org", "https://arc-testnet.drpc.org"]
-    # the official endpoint announces fastest but rate-limits queries — listen only
     announceRpc: ["wss://rpc.testnet.arc.network"]
     finalityTag: latest
   storage:

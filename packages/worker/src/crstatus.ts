@@ -42,12 +42,12 @@ export function crStatusTargetFromEnv(
 
 export function patchCrStatus(target: CrStatusTarget, status: CrRuntimeStatus): Promise<void> {
   const url = new URL(
-    `/apis/arclight.dev/v1alpha1/namespaces/${target.namespace}/indexers/${target.name}/status`
-      + '?fieldManager=arclight-worker&force=true&fieldValidation=Strict',
+    `/apis/arckive.org/v1alpha1/namespaces/${target.namespace}/indexers/${target.name}/status`
+      + '?fieldManager=arckive-worker&force=true&fieldValidation=Strict',
     target.baseUrl,
   );
   const body = JSON.stringify({
-    apiVersion: 'arclight.dev/v1alpha1',
+    apiVersion: 'arckive.org/v1alpha1',
     kind: 'Indexer',
     metadata: { name: target.name, namespace: target.namespace },
     status,

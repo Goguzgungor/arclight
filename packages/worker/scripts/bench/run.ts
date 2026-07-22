@@ -1,4 +1,4 @@
-// arclight-bench orchestrator: runs the scenarios in order, writes results.json.
+// arckive-bench orchestrator: runs the scenarios in order, writes results.json.
 //   pnpm bench                          # all four scenarios
 //   BENCH_SCENARIOS=freshness pnpm bench
 // Output: docs/benchmarks/<YYYY-MM-DD>/results.json
@@ -12,7 +12,7 @@ import * as visibility from './visibility.ts';
 
 const ROOT = resolve(import.meta.dirname, '../../../..');
 const DATABASE_URL =
-  process.env['DATABASE_URL'] ?? 'postgres://arclight:arclight@localhost:5432/arclight';
+  process.env['DATABASE_URL'] ?? 'postgres://arckive:arckive@localhost:5432/arckive';
 
 const SCENARIOS: Record<string, () => Promise<unknown>> = {
   visibility: () => visibility.run(),

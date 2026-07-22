@@ -37,7 +37,7 @@ importers:
 
   packages/operator:
     dependencies:
-      '@arclight/core':
+      '@arckive/core':
         specifier: workspace:*
         version: link:../core
       kubernetes-fluent-client:
@@ -59,7 +59,7 @@ importers:
 
   packages/worker:
     dependencies:
-      '@arclight/core':
+      '@arckive/core':
         specifier: workspace:*
         version: link:../core
       pg:

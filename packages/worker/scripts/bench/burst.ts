@@ -92,8 +92,8 @@ export async function run(databaseUrl: string): Promise<BurstResult> {
 
     const count = await db.query('SELECT count(*)::int AS n FROM idx_bench_burst.emitter_ping');
     const ingested = Number(count.rows[0]!.n);
-    const wSum = await metricValue(PORT, 'arclight_write_latency_seconds_sum');
-    const wCount = await metricValue(PORT, 'arclight_write_latency_seconds_count');
+    const wSum = await metricValue(PORT, 'arckive_write_latency_seconds_sum');
+    const wCount = await metricValue(PORT, 'arckive_write_latency_seconds_count');
     return {
       kind: 'burst',
       network: 'local',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { IndexerSpecSchema, configHash, renderWorkerConfig } from '@arclight/core';
+import { IndexerSpecSchema, configHash, renderWorkerConfig } from '@arckive/core';
 import { desiredResources, workerResourceName } from '../src/resources.js';
 
 const ADDR = `0x${'ab'.repeat(20)}`;
@@ -15,12 +15,12 @@ const input = {
   namespace: 'default',
   owner: { name: 'demo', uid: 'uid-123' },
   spec,
-  workerImage: 'arclight-worker:test',
+  workerImage: 'arckive-worker:test',
 };
 
 describe('workerResourceName', () => {
-  it('adds the arclight- prefix, throws when exceeding 63 characters', () => {
-    expect(workerResourceName('demo')).toBe('arclight-demo');
+  it('adds the arckive- prefix, throws when exceeding 63 characters', () => {
+    expect(workerResourceName('demo')).toBe('arckive-demo');
     expect(() => workerResourceName('x'.repeat(60))).toThrow(/63/);
   });
 });
@@ -31,7 +31,7 @@ describe('desiredResources', () => {
   it('ownerReference and names are correct on all resources', () => {
     for (const r of [d.configMap, d.serviceAccount, d.role, d.roleBinding, d.deployment]) {
       expect(r.metadata?.ownerReferences?.[0]).toMatchObject({
-        apiVersion: 'arclight.dev/v1alpha1',
+        apiVersion: 'arckive.org/v1alpha1',
         kind: 'Indexer',
         name: 'demo',
         uid: 'uid-123',
@@ -39,9 +39,9 @@ describe('desiredResources', () => {
       });
       expect(r.metadata?.namespace).toBe('default');
     }
-    expect(d.deployment.metadata?.name).toBe('arclight-demo');
-    expect(d.configMap.metadata?.name).toBe('arclight-demo-config');
-    expect(d.role.metadata?.name).toBe('arclight-demo-status');
+    expect(d.deployment.metadata?.name).toBe('arckive-demo');
+    expect(d.configMap.metadata?.name).toBe('arckive-demo-config');
+    expect(d.role.metadata?.name).toBe('arckive-demo-status');
   });
 
   it('config ConfigMap contains the rendered worker config and the hash matches', () => {
@@ -51,7 +51,7 @@ describe('desiredResources', () => {
     );
     expect(d.hash).toBe(configHash(rendered));
     expect(d.deployment.spec?.template.metadata?.annotations).toEqual({
-      'arclight.dev/config-hash': d.hash,
+      'arckive.org/config-hash': d.hash,
     });
   });
 
@@ -59,12 +59,12 @@ describe('desiredResources', () => {
     expect(d.deployment.spec?.replicas).toBe(1);
     expect(d.deployment.spec?.strategy?.type).toBe('Recreate');
     const c = d.deployment.spec!.template.spec!.containers[0]!;
-    expect(c.image).toBe('arclight-worker:test');
+    expect(c.image).toBe('arckive-worker:test');
     expect(c.env).toContainEqual({
       name: 'DATABASE_URL',
       valueFrom: { secretKeyRef: { name: 'pg-dsn', key: 'url' } },
     });
-    expect(c.env).toContainEqual({ name: 'CONFIG_PATH', value: '/etc/arclight/config/config.json' });
+    expect(c.env).toContainEqual({ name: 'CONFIG_PATH', value: '/etc/arckive/config/config.json' });
     expect(c.env).toContainEqual({ name: 'INDEXER_CR_NAME', value: 'demo' });
     expect(c.livenessProbe?.httpGet?.path).toBe('/metrics');
     expect(c.readinessProbe?.httpGet?.path).toBe('/healthz');
@@ -76,7 +76,7 @@ describe('desiredResources', () => {
     const mounts = d.deployment.spec!.template.spec!.containers[0]!.volumeMounts!;
     expect(mounts).toContainEqual({
       name: 'abi-second',
-      mountPath: '/etc/arclight/abis/second',
+      mountPath: '/etc/arckive/abis/second',
       readOnly: true,
     });
     expect(volumes[2]!.configMap?.name).toBe('second-abi');
@@ -85,7 +85,7 @@ describe('desiredResources', () => {
   it('role can only patch its own CR status', () => {
     expect(d.role.rules).toEqual([
       {
-        apiGroups: ['arclight.dev'],
+        apiGroups: ['arckive.org'],
         resources: ['indexers/status'],
         verbs: ['patch'],
         resourceNames: ['demo'],
@@ -93,9 +93,9 @@ describe('desiredResources', () => {
     ]);
     expect(d.roleBinding.subjects?.[0]).toMatchObject({
       kind: 'ServiceAccount',
-      name: 'arclight-demo',
+      name: 'arckive-demo',
       namespace: 'default',
     });
-    expect(d.roleBinding.roleRef.name).toBe('arclight-demo-status');
+    expect(d.roleBinding.roleRef.name).toBe('arckive-demo-status');
   });
 });
