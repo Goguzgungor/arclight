@@ -27,11 +27,20 @@ spec:
     external:
       dsnSecretRef: { name: pg-dsn, key: url }
   contracts:
-    # native USDC — ABI auto-fetched from the explorer, tails from head
+    # native USDC is a FiatToken proxy — the explorer serves only the proxy ABI,
+    # so the ERC-20 Transfer is provided inline (still no ConfigMap, still 2 commands)
     - name: usdc
       address: "0x3600000000000000000000000000000000000000"
       startBlock: -500   # last ~500 blocks: instant data, then live
       events: [Transfer]
+      abi:
+        inline:
+          - type: event
+            name: Transfer
+            inputs:
+              - { name: from, type: address, indexed: true }
+              - { name: to, type: address, indexed: true }
+              - { name: value, type: uint256, indexed: false }
 ---
 apiVersion: arckive.org/v1alpha1
 kind: Indexer
