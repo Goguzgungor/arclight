@@ -1,4 +1,4 @@
-# Arclight
+# Arckive
 
 Kubernetes-native, self-hosted contract-event indexer for Arc (Circle's
 stablecoin-focused EVM L1). You declare an `Indexer` custom resource; the
@@ -37,9 +37,9 @@ kubectl get indexers
 
 `install.yaml` is generated from the chart by `scripts/build-install.sh`
 (Namespace + CRD + operator; images
-`ghcr.io/goguzgungor/arclight-{operator,worker}:latest`) and published to a
+`ghcr.io/goguzgungor/arckive-{operator,worker}:latest`) and published to a
 GitHub Release on every push to `main`. The Helm path still works if you want
-your own images: `helm install arclight charts/arclight
+your own images: `helm install arckive charts/arckive
 --set image.repository=... --set workerImage.repository=...`
 
 Add a `wss://` endpoint to the `rpc` list and the worker sees each new block
@@ -76,10 +76,10 @@ live in `docs/benchmarks/` · reproduce with `pnpm bench`
 ## Observability
 
 The worker serves `:9090/metrics` (Prometheus) and `:9090/healthz`:
-`arclight_blocks_behind`, `arclight_events_ingested_total`,
-`arclight_rpc_errors_total`, `arclight_last_processed_block`,
-`arclight_dead_letter_total`, `arclight_write_latency_seconds`,
-`arclight_ws_connected`, `arclight_head_notifications_total`.
+`arckive_blocks_behind`, `arckive_events_ingested_total`,
+`arckive_rpc_errors_total`, `arckive_last_processed_block`,
+`arckive_dead_letter_total`, `arckive_write_latency_seconds`,
+`arckive_ws_connected`, `arckive_head_notifications_total`.
 
 ## Development
 
@@ -93,4 +93,4 @@ pnpm e2e                                      # end-to-end on kind (needs kind +
 ```
 
 Note: Helm applies the CRD only on first install (from `crds/`); CRD updates
-are applied manually with `kubectl apply -f charts/arclight/crds/indexer.yaml`.
+are applied manually with `kubectl apply -f charts/arckive/crds/indexer.yaml`.

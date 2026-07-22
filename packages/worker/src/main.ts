@@ -3,7 +3,7 @@ import pg from 'pg';
 import { pino } from 'pino';
 import {
   extractEventDefs, parseWorkerConfig, schemaName, type EventDef,
-} from '@arclight/core';
+} from '@arckive/core';
 import { createMetrics } from './metrics.js';
 import { bootstrapIndexer, runLoop, type PipelineDeps } from './pipeline.js';
 import { createRpc, filterHealthyRpcs, splitRpcUrls } from './rpc.js';
@@ -18,7 +18,7 @@ const log = pino({ level: process.env['LOG_LEVEL'] ?? 'info' });
 async function main(): Promise<void> {
   const dsn = process.env['DATABASE_URL'];
   if (!dsn) throw new Error('DATABASE_URL is required');
-  const configPath = process.env['CONFIG_PATH'] ?? '/etc/arclight/config.json';
+  const configPath = process.env['CONFIG_PATH'] ?? '/etc/arckive/config.json';
   const cfg = parseWorkerConfig(JSON.parse(readFileSync(configPath, 'utf8')));
 
   const metrics = createMetrics(cfg.indexerName);
@@ -82,7 +82,7 @@ async function main(): Promise<void> {
   }
   const stopCrStatus = crTarget ? startCrStatusLoop(crTarget, phase, log) : (): void => {};
   if (crTarget) log.info({ cr: `${crTarget.namespace}/${crTarget.name}` }, 'CR status patching enabled');
-  log.info({ indexer: cfg.indexerName, schema: deps.schema, rpcs }, 'arclight worker started');
+  log.info({ indexer: cfg.indexerName, schema: deps.schema, rpcs }, 'arckive worker started');
 
   const ctrl = new AbortController();
   const shutdown = () => {

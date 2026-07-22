@@ -9,7 +9,7 @@
     {
       "name": "usdc",
       "address": "0x3600000000000000000000000000000000000000",
-      "abiPath": "/etc/arclight/usdc-abi.json",
+      "abiPath": "/etc/arckive/usdc-abi.json",
       "startBlock": 0,
       "events": ["Transfer", "Approval"]
     }

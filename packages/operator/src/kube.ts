@@ -1,5 +1,5 @@
 import { K8s, kind } from 'kubernetes-fluent-client';
-import type { IndexerStatus } from '@arclight/core';
+import type { IndexerStatus } from '@arckive/core';
 import { Indexer } from './kinds.js';
 
 export interface KubeApi {
@@ -48,7 +48,7 @@ export function createKubeApi(): KubeApi {
     },
     async patchIndexerStatus(namespace, name, status) {
       await K8s(Indexer).PatchStatus({
-        apiVersion: 'arclight.dev/v1alpha1',
+        apiVersion: 'arckive.org/v1alpha1',
         kind: 'Indexer',
         metadata: { name, namespace },
         status,

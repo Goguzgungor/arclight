@@ -7,7 +7,7 @@ import { pino } from 'pino';
 import { createWalletClient, http, publicActions } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { extractEventDefs, parseWorkerConfig, type WorkerConfig } from '@arclight/core';
+import { extractEventDefs, parseWorkerConfig, type WorkerConfig } from '@arckive/core';
 import { getCursor } from '../src/db.js';
 import { createMetrics } from '../src/metrics.js';
 import { bootstrapIndexer, runLoop, runOnce, type PipelineDeps } from '../src/pipeline.js';

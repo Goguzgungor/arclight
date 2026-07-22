@@ -20,7 +20,7 @@ export function writeWorkerFiles(
   files: Record<string, unknown>,
   makeConfig: (dir: string) => Record<string, unknown>,
 ): string {
-  const dir = mkdtempSync(join(tmpdir(), `arclight-bench-${name}-`));
+  const dir = mkdtempSync(join(tmpdir(), `arckive-bench-${name}-`));
   for (const [file, content] of Object.entries(files)) {
     writeFileSync(join(dir, file), JSON.stringify(content, null, 2));
   }

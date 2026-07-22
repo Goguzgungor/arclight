@@ -1,10 +1,10 @@
 image:
-  repository: arclight-operator
+  repository: arckive-operator
   tag: dev
   pullPolicy: IfNotPresent
 
 workerImage:
-  repository: arclight-worker
+  repository: arckive-worker
   tag: dev
 
 logLevel: info

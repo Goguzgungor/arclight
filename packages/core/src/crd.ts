@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { RpcUrlSchema, WorkerConfigSchema, type WorkerConfig } from './config.js';
 
-export const ABI_MOUNT_DIR = '/etc/arclight/abis';
-export const CONFIG_MOUNT_PATH = '/etc/arclight/config/config.json';
+export const ABI_MOUNT_DIR = '/etc/arckive/abis';
+export const CONFIG_MOUNT_PATH = '/etc/arckive/config/config.json';
 
 export const IndexerSpecSchema = z.object({
   network: z.object({

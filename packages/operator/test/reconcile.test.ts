@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { pino } from 'pino';
 import type { kind } from 'kubernetes-fluent-client';
-import type { IndexerStatus } from '@arclight/core';
+import type { IndexerStatus } from '@arckive/core';
 import type { Indexer } from '../src/kinds.js';
 import type { KubeApi } from '../src/kube.js';
 import { reconcile } from '../src/reconcile.js';
@@ -11,7 +11,7 @@ const ADDR = `0x${'ab'.repeat(20)}`;
 
 function makeCr(): Indexer {
   return {
-    apiVersion: 'arclight.dev/v1alpha1',
+    apiVersion: 'arckive.org/v1alpha1',
     kind: 'Indexer',
     metadata: { name: 'demo', namespace: 'default', uid: 'uid-1', generation: 3 },
     spec: {
@@ -78,11 +78,11 @@ describe('reconcile', () => {
     const kube = makeFake();
     await reconcile({ kube, workerImage: 'w:test', log }, makeCr());
     expect(kube.applied).toEqual([
-      'ServiceAccount/arclight-demo',
-      'Role/arclight-demo-status',
-      'RoleBinding/arclight-demo-status',
-      'ConfigMap/arclight-demo-config',
-      'Deployment/arclight-demo',
+      'ServiceAccount/arckive-demo',
+      'Role/arckive-demo-status',
+      'RoleBinding/arckive-demo-status',
+      'ConfigMap/arckive-demo-config',
+      'Deployment/arckive-demo',
     ]);
     expect(kube.statusPatches).toHaveLength(1);
     expect(kube.statusPatches[0]!.observedGeneration).toBe(3);

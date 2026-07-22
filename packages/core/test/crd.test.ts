@@ -74,7 +74,7 @@ describe('renderWorkerConfig', () => {
     const cfg = renderWorkerConfig('usdc-arc', spec);
     expect(() => WorkerConfigSchema.parse(cfg)).not.toThrow();
     expect(cfg.indexerName).toBe('usdc-arc');
-    expect(cfg.contracts[0]!.abiPath).toBe('/etc/arclight/abis/usdc/abi.json');
+    expect(cfg.contracts[0]!.abiPath).toBe('/etc/arckive/abis/usdc/abi.json');
     expect(cfg.network.finalityTag).toBe('finalized');
   });
 });

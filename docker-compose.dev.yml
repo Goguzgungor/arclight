@@ -2,12 +2,12 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: arclight
-      POSTGRES_PASSWORD: arclight
-      POSTGRES_DB: arclight
+      POSTGRES_USER: arckive
+      POSTGRES_PASSWORD: arckive
+      POSTGRES_DB: arckive
     ports: ["5432:5432"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U arclight"]
+      test: ["CMD-SHELL", "pg_isready -U arckive"]
       interval: 2s
       timeout: 2s
       retries: 15
@@ -25,8 +25,8 @@ services:
       postgres: { condition: service_healthy }
       anvil: { condition: service_started }
     environment:
-      DATABASE_URL: postgres://arclight:arclight@postgres:5432/arclight
-      CONFIG_PATH: /etc/arclight/worker-config.json
+      DATABASE_URL: postgres://arckive:arckive@postgres:5432/arckive
+      CONFIG_PATH: /etc/arckive/worker-config.json
     volumes:
-      - ./manifests/demo:/etc/arclight:ro
+      - ./manifests/demo:/etc/arckive:ro
     ports: ["9090:9090"]

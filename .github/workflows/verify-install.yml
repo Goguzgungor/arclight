@@ -11,6 +11,6 @@ jobs:
       - name: apply arckive.org/install.yaml
         run: kubectl apply -f https://arckive.org/install.yaml
       - name: operator becomes Ready
-        run: kubectl -n arclight-system rollout status deploy/arclight-operator --timeout=180s
+        run: kubectl -n arckive-system rollout status deploy/arckive-operator --timeout=180s
       - name: CRD is served
         run: kubectl get indexers -A

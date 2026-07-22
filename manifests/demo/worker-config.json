@@ -9,7 +9,7 @@
     {
       "name": "emitter",
       "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-      "abiPath": "/etc/arclight/emitter-abi.json"
+      "abiPath": "/etc/arckive/emitter-abi.json"
     }
   ],
   "polling": { "batchBlocks": 100, "intervalMs": 1000 }

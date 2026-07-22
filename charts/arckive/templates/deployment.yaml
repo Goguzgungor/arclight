@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: arclight-operator
+  name: arckive-operator
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "arclight.labels" . | nindent 4 }}
+    {{- include "arckive.labels" . | nindent 4 }}
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app.kubernetes.io/name: arclight-operator
+      app.kubernetes.io/name: arckive-operator
   template:
     metadata:
       labels:
-        {{- include "arclight.labels" . | nindent 8 }}
+        {{- include "arckive.labels" . | nindent 8 }}
     spec:
-      serviceAccountName: arclight-operator
+      serviceAccountName: arckive-operator
       containers:
         - name: operator
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

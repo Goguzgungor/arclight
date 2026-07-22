@@ -54,8 +54,8 @@ describe('patchCrStatus', () => {
     const r = captured[0]!;
     expect(r.method).toBe('PATCH');
     expect(r.url).toBe(
-      '/apis/arclight.dev/v1alpha1/namespaces/default/indexers/demo/status'
-        + '?fieldManager=arclight-worker&force=true&fieldValidation=Strict',
+      '/apis/arckive.org/v1alpha1/namespaces/default/indexers/demo/status'
+        + '?fieldManager=arckive-worker&force=true&fieldValidation=Strict',
     );
     expect(r.headers.authorization).toBe('Bearer test-token');
     expect(r.headers['content-type']).toBe('application/apply-patch+yaml');

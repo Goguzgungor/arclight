@@ -1,5 +1,5 @@
 {
-  "name": "arclight",
+  "name": "arckive",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.12.1",
@@ -10,11 +10,11 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "eslint .",
-    "demo:seed": "pnpm --filter @arclight/worker demo:seed",
-    "e2e": "pnpm --filter @arclight/e2e test:e2e",
-    "arc:preflight": "pnpm --filter @arclight/worker arc:preflight",
-    "bench": "pnpm --filter @arclight/worker bench",
-    "bench:report": "pnpm --filter @arclight/worker bench:report"
+    "demo:seed": "pnpm --filter @arckive/worker demo:seed",
+    "e2e": "pnpm --filter @arckive/e2e test:e2e",
+    "arc:preflight": "pnpm --filter @arckive/worker arc:preflight",
+    "bench": "pnpm --filter @arckive/worker bench",
+    "bench:report": "pnpm --filter @arckive/worker bench:report"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
