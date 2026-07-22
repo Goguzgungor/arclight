@@ -17,8 +17,8 @@ export const ContractConfigSchema = z.object({
   // the worker errors at startup if none of the three yields an ABI.
   abiPath: z.string().min(1).optional(),
   abiInline: z.array(z.unknown()).optional(),
-  // omitted = start from the current chain head (tail live, no backfill)
-  startBlock: z.number().int().nonnegative().optional(),
+  // omitted = tail from head; negative = head-relative (last |n| blocks); >=0 = absolute
+  startBlock: z.number().int().optional(),
   events: z.array(z.string().min(1)).default([]),
 });
 
